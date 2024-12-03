@@ -5,8 +5,6 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
@@ -14,21 +12,24 @@ export FZF_DEFAULT_OPTS=" \
 --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
 
 
-# Path to your oh-my-zsh installation.
+# Lines configured by zsh-newuser-install
+HISTFILE=~/.histfile
+HISTSIZE=100000
+SAVEHIST=100000
+bindkey -e
+# End of lines configured by zsh-newuser-install
+
+# If you come from bash you might have to change your $PATH.
+# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+
+# Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
-export PATH="$HOME/.local/bin:$PATH"
-ENABLE_CORRECTION=true
-SAVEHIST=10000
-ZSH_DISABLE_COMPFIX=true
 
 # Set name of the theme to load --- if set to "random", it will
-# load a random theme each time oh-my-zsh is loaded, in which case,
+# load a random theme each time Oh My Zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
 ZSH_THEME="robbyrussell"
-
-
-export BOT_TOKEN="MTE4NDc0ODYwMjA4NjY1NDAzMw.GP-s6-.q6sCewGiH_HfxvcTU-hdICv-kG5LBZsYdalnTI"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -91,34 +92,18 @@ export BOT_TOKEN="MTE4NDc0ODYwMjA4NjY1NDAzMw.GP-s6-.q6sCewGiH_HfxvcTU-hdICv-kG5L
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(
-          aliases
-          autojump
-          catimg
-          chucknorris
           colored-man-pages
-          command-not-found
-          emoji-clock
           encode64
           extract
           frontend-search
           genpass
           git
-          gitignore
-          lol
-          thefuck 
-          web-search  
+          history
+          thefuck
+          web-search
           zsh-interactive-cd
-          zsh-syntax-highlighting 
-          colorize
         )
 
-
-# export MOZ_ENABLE_WAYLAND=1
-export BAT_THEME="Catppuccin-mocha"
-export PATH=$PATH:/home/IuseArch/go/bin/
-export OPENAI_API_KEY="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"
-source ~/.zsh/catppuccin_macchiato-zsh-syntax-highlighting.zsh
-source /usr/share/doc/find-the-command/ftc.zsh
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
@@ -132,38 +117,36 @@ source $ZSH/oh-my-zsh.sh
 # if [[ -n $SSH_CONNECTION ]]; then
 #   export EDITOR='vim'
 # else
-#   export EDITOR='mvim'
+#   export EDITOR='nvim'
 # fi
 
 # Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+# export ARCHFLAGS="-arch $(uname -m)"
 
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
+# Init zoxide
+eval "$(zoxide init zsh)"
+# Init thefuck
+eval $(thefuck --alias)
+
+# Random quotes
+fortune | cowsay
+
+# Set personal aliases, overriding those provided by Oh My Zsh libs,
+# plugins, and themes. Aliases can be placed here, though Oh My Zsh
+# users are encouraged to define aliases within a top-level file in
+# the $ZSH_CUSTOM folder, with .zsh extension. Examples:
+# - $ZSH_CUSTOM/aliases.zsh
+# - $ZSH_CUSTOM/macos.zsh
 # For a full list of active aliases, run `alias`.
-#
-# Example aliases
-# alias zshconfig="mate ~/.zshrc"
-# alias ohmyzsh="mate ~/.oh-my-zsh"
-alias rr="curl -L https://raw.githubusercontent.com/keroserene/rickrollrc/master/roll.sh | bash"
-alias dba="sudo -iu postgres"
-# alias IuseArchbtw="i-use-arch-btw"
-alias n="exec nautilus"
-alias ccat="pygmentize -g"
-alias IuseArchBTW="neofetch"
-alias task="go-task"
-alias cmatrix="cmatrix -r"
-
+alias cd="z"
+alias ls="eza"
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# bun completions
-# [ -s "/home/IuseArch/.bun/_bun" ] && source "/home/IuseArch/.bun/_bun"
+# Load catppuccin zsh-syntax-highlighting plugin
+source ~/.zsh/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
 
-# bun
-# export BUN_INSTALL="$HOME/.bun"
-# export PATH="$BUN_INSTALL/bin:$PATH"
-eval "$(zoxide init --cmd cd zsh)"
+# Load zsh-syntax-highlighting plugin
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
