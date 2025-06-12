@@ -1,0 +1,104 @@
+{
+  "languages": {
+    "TypeScript": {
+      "show_edit_predictions": true
+    }
+  },
+  "active_pane_modifiers": {
+    "border_size": 0.0,
+    "inactive_opacity": 1.0,
+    "magnification": 1.0
+  },
+  "agent": {
+    "button": true,
+    "default_height": 320,
+    "default_model": {
+      "model": "claude-sonnet-4",
+      "provider": "copilot_chat"
+    },
+    "default_width": 640,
+    "dock": "right",
+    "editor_model": {
+      "model": "claude-3-7-sonnet",
+      "provider": "copilot_chat"
+    },
+    "enabled": true,
+    "single_file_review": true,
+    "version": "2"
+  },
+  // "autosave": "on_window_change",
+  "autoscroll_on_clicks": true,
+  "bottom_dock_layout": "full",
+  "buffer_font_family": "CartographCF Nerd Font",
+  "buffer_font_size": 16,
+  "buffer_font_weight": 400,
+  "buffer_line_height": "comfortable",
+  "centered_layout": {
+    "left_padding": 0.2,
+    "right_padding": 0.2
+  },
+  "completions": {
+    "lsp": true,
+    "lsp_fetch_timeout_ms": 0,
+    "lsp_insert_mode": "replace_suffix",
+    "words": "fallback"
+  },
+  "current_line_highlight": "gutter",
+  "cursor_shape": "hollow",
+  "edit_predictions": {
+    "mode": "eager",
+    "disabled_globs": [
+      "/.env*",
+      "/*.pem",
+      "/*.key",
+      "/*.cert",
+      "/*.crt",
+      "/.dev.vars",
+      "**/secrets.yml"
+    ]
+  },
+  "enable_language_server": true,
+  "features": {
+    "edit_prediction_provider": "copilot"
+  },
+  "format_on_save": "on",
+  "formatter": "language_server",
+  "icon_theme": "Catppuccin Mocha",
+  "indent_guides": {
+    // "coloring": "indent_aware",
+    "enabled": true
+  },
+  "scrollbar": {
+    "axes": {
+      "horizontal": true,
+      "vertical": true
+    },
+    "cursors": true,
+    "diagnostics": "all",
+    "git_diff": true,
+    "search_results": true,
+    "selected_symbol": true,
+    "selected_text": true,
+    "show": "auto"
+  },
+  "show_completions_on_input": true,
+  "show_edit_predictions": true,
+  "soft_wrap": "editor_width",
+  "tab_bar": {
+    "show": true,
+    "show_nav_history_buttons": true,
+    "show_tab_bar_buttons": true
+  },
+  "theme": {
+    "dark": "Catppuccin Mocha",
+    "light": "One Light",
+    "mode": "system"
+  },
+  "toolbar": {
+    "agent_review": true,
+    "breadcrumbs": true,
+    "quick_actions": true,
+    "selections_menu": true
+  },
+  "ui_font_size": 16
+}
