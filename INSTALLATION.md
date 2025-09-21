@@ -1,12 +1,13 @@
 # Arch Linux Installation Guide
 
-A comprehensive installation script for Arch Linux with GNOME desktop environment.
+A comprehensive installation script for Arch Linux with support for both systemd-boot and GRUB bootloaders, plus yay AUR helper setup.
 
 ## Prerequisites
 
 - Arch Linux ISO booted in UEFI mode
 - Internet connection
 - USB drive or SSD for installation
+- This repository cloned to access boot loader templates
 
 ## Installation Steps
 
@@ -37,180 +38,185 @@ cfdisk /dev/nvme0n1
 - Swap partition (optional, recommended if RAM < 16GB)
 - Root partition (remaining space, type: Linux filesystem)
 
-### 3. Format Partitions
+### 3. Clone Repository and Run Installation Script
 
-**EFI Partition:**
 ```bash
-# For USB
-mkfs.fat -F32 /dev/sda1
-# For SSD
-mkfs.fat -F32 /dev/nvme0n1p1
+# Clone the repository
+git clone https://github.com/SvnFrs/btw-arch-dots.git
+cd btw-arch-dots
+
+# Make the script executable
+chmod +x scripts/install-explained.sh
+
+# Run the installation script
+./scripts/install-explained.sh
 ```
 
-**Swap Partition (if created):**
-```bash
-# For USB
-mkswap /dev/sda2
-# For SSD
-mkswap /dev/nvme0n1p2
-```
+The script will prompt you for:
+- EFI partition (e.g., `/dev/nvme0n1p1` or `/dev/sda1`)
+- ROOT partition (e.g., `/dev/nvme0n1p3` or `/dev/sda3`)
+- SWAP partition (optional - press Enter to skip)
 
-**Root Partition:**
-```bash
-# For USB
-mkfs.ext4 /dev/sda3
-# For SSD
-mkfs.ext4 /dev/nvme0n1p3
-```
+### 4. Bootloader Selection
 
-### 4. Mount Partitions
+During installation, you'll be prompted to choose between:
 
-```bash
-# Mount root partition (adjust device name as needed)
-mount /dev/nvme0n1p3 /mnt
+**Option 1: systemd-boot**
+- Uses your repository's boot loader templates
+- Automatically patches PARTUUID and microcode
+- Cleaner, simpler boot process
+- Recommended for single-boot systems
 
-# Create and mount EFI directory
-mkdir -p /mnt/boot/efi
-mount /dev/nvme0n1p1 /mnt/boot/efi
+**Option 2: GRUB**
+- Traditional bootloader with os-prober support
+- Better for dual-boot setups
+- Automatic detection of other operating systems
 
-# Enable swap (if created)
-swapon /dev/nvme0n1p2
-```
+### 5. Complete User Setup
 
-### 5. Install Base System
+After the base installation completes, you'll need to manually configure users:
 
 ```bash
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr git firefox neovim networkmanager kitty gnome os-prober
-```
-
-### 6. Generate Filesystem Table
-
-```bash
-genfstab /mnt > /mnt/etc/fstab
-```
-
-### 7. Enter the New System
-
-```bash
-arch-chroot /mnt
-```
-
-### 8. Configure System Settings
-
-**Set timezone:**
-```bash
-ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
-hwclock --systohc
-```
-
-**Configure locale:**
-```bash
-nvim /etc/locale.gen
-```
-*Uncomment: `en_US.UTF-8 UTF-8`*
-
-```bash
-locale-gen
-```
-
-```bash
-nvim /etc/locale.conf
-```
-*Add: `LANG=en_US.UTF-8`*
-
-**Set keymap:**
-```bash
-nvim /etc/vconsole.conf
-```
-*Add: `KEYMAP=us`*
-
-**Set hostname:**
-```bash
-nvim /etc/hostname
-```
-*Add your desired hostname (e.g., `ArchBTW`)*
-
-### 9. User Management
-
-**Set root password:**
-```bash
+# Set root password
 passwd
-```
 
-**Create user:**
-```bash
+# Create your user
 useradd -m -G wheel -s /bin/bash USERNAME
-```
-
-**Set user password:**
-```bash
 passwd USERNAME
-```
 
-**Configure sudo:**
-```bash
+# Configure sudo access
 EDITOR=nvim visudo
 ```
 *Uncomment: `%wheel ALL=(ALL) ALL`*
-*Optional: For passwordless sudo, uncomment: `%wheel ALL=(ALL) NOPASSWD: ALL`*
 
-### 10. Enable Services
+### 6. Install Desktop Environment (Optional)
 
 ```bash
-systemctl enable NetworkManager
+# Install GNOME desktop
+pacman -S gnome gdm
 systemctl enable gdm
 ```
 
-### 11. Install and Configure Bootloader
+### 7. Install yay AUR Helper
+
+After rebooting and logging in as your user:
 
 ```bash
-# Install GRUB
-grub-install /dev/nvme0n1
+# Install git and base-devel if not already installed
+sudo pacman -S --needed git base-devel
 
-# Generate GRUB configuration
-grub-mkconfig -o /boot/grub/grub.cfg
+# Clone yay repository
+git clone https://aur.archlinux.org/yay.git
+cd yay
+
+# Build and install yay
+makepkg -si
+
+# Clean up
+cd ..
+rm -rf yay
+
+# Test yay installation
+yay --version
 ```
 
-**Enable dual-boot detection (optional):**
-```bash
-nvim /etc/default/grub
-```
-*Uncomment: `GRUB_DISABLE_OS_PROBER=false`*
-
-```bash
-# Detect other operating systems
-os-prober
-
-# Update GRUB configuration
-grub-mkconfig -o /boot/grub/grub.cfg
-```
-
-### 12. Finalize Installation
+### 8. Finalize Installation
 
 ```bash
 # Exit chroot environment
 exit
 
 # Unmount all partitions
-umount -a
+umount -R /mnt
+swapoff -a
 
 # Reboot system
 reboot
 ```
 
-## Post-Installation Notes
+## Script Features
 
-- Remove the installation media before the system restarts
-- Login with your created user account
-- GNOME desktop environment will start automatically
-- Configure your system preferences as needed
+### Automated Configuration
+- **Timezone**: Asia/Ho_Chi_Minh (configurable)
+- **Locale**: en_US.UTF-8
+- **Keymap**: US
+- **Hostname**: ArchBTW (configurable via environment variable)
+
+### Smart Detection
+- **CPU Microcode**: Automatically detects Intel or AMD and installs appropriate microcode
+- **Kernel Support**: Handles both standard linux and linux-zen kernels
+- **UUID-based mounting**: Uses UUIDs in fstab for stability
+
+### Bootloader Intelligence
+- **systemd-boot**: Copies and patches your repository's boot loader configuration
+- **GRUB**: Full UEFI setup with os-prober for dual-boot detection
+
+## Post-Installation Setup
+
+### Essential AUR Packages
+```bash
+# Popular AUR packages you might want
+yay -S visual-studio-code-bin
+yay -S google-chrome
+yay -S discord
+yay -S spotify
+```
+
+### System Maintenance
+```bash
+# Update system and AUR packages
+yay -Syu
+
+# Clean package cache
+yay -Sc
+```
+
+## Customization Options
+
+### Environment Variables
+```bash
+# Set custom hostname before running script
+export HOSTNAME="MyArchSystem"
+./scripts/install-explained.sh
+```
+
+### Boot Loader Templates
+The script uses templates from `./boot/loader/` in your repository. Customize these files before installation to match your preferences.
 
 ## Troubleshooting
 
-- If WiFi doesn't work after installation, ensure NetworkManager is running: `systemctl status NetworkManager`
-- For boot issues, check UEFI settings and ensure the correct boot device is selected
-- If GRUB doesn't detect other operating systems, verify os-prober configuration
+### Boot Issues
+- **systemd-boot**: Check `/boot/loader/entries/` for proper PARTUUID
+- **GRUB**: Verify UEFI boot order and secure boot settings
+- **General**: Ensure EFI partition is properly mounted and formatted
+
+### Network Issues
+```bash
+# Check NetworkManager status
+systemctl status NetworkManager
+
+# Restart networking
+sudo systemctl restart NetworkManager
+```
+
+### yay Issues
+```bash
+# If yay fails to build packages, ensure base-devel is installed
+sudo pacman -S base-devel
+
+# Clear yay cache if needed
+yay -Sc --aur
+```
+
+## Advanced Usage
+
+### Manual Script Components
+You can also use the minimal script for faster installation:
+```bash
+./scripts/install-min.sh
+```
+
+### Custom Boot Entries
+For systemd-boot users, boot entries are automatically patched, but you can customize them in your repository's `boot/loader/entries/` directory before installation.
 
 ---
-
-**Remember to adjust device names (`/dev/sda` vs `/dev/nvme0n1`) based on your storage type!**
