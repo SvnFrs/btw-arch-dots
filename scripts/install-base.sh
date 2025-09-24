@@ -34,7 +34,7 @@ mkfs.ext4 /dev/sda3
 mkfs.ext4 /dev/nvme0n1p3
 
 # mount the root partition
-mount /dev/nvmeon1p3 /mnt
+mount /dev/nvme0n1p3 /mnt
 
 # make the efi folder
 mkdir -p /mnt/boot/efi
@@ -46,7 +46,7 @@ mount /dev/nvme0n1p1 /mnt/boot/efi
 swapon /dev/nvme0n1p2
 
 # start installing packages
-pacstrap /mnt base linux linux-firmware sof-firmware base-devel grub efibootmgr git firefox neovim networkmanager kitty gnome os-prober
+pacstrap /mnt base linux linux-zen linux-firmware sof-firmware base-devel grub efibootmgr git neovim networkmanager kitty gnome os-prober
 
 # generate file system
 genfstab /mnt > /mnt/etc/fstab
