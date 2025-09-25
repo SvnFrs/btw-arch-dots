@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+rofi \
+	-show window \
+	-scroll-method 0 \
+	-window-match-fields all \
+	-window-format "{w} {c} {t}" \
+	-no-window-show-actions \
+	-terminal kitty \
+	-kb-cancel Escape \
+	-theme "$HOME"/.config/rofi/config/window-switcher.rasi
