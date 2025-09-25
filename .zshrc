@@ -106,6 +106,13 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
+export TERM=xterm-256color
+
+export EDITOR=nvim
+
+export RANGER_LOAD_DEFAULT_RC=false
+
+export TERM=kitty
 # User configuration
 
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -126,7 +133,7 @@ source $ZSH/oh-my-zsh.sh
 # Init zoxide
 eval "$(zoxide init zsh)"
 # Init thefuck
-# eval $(thefuck --alias)
+eval $(thefuck --alias)
 
 # Random quotes
 fortune | cowsay
@@ -146,6 +153,8 @@ alias password="cat ~/Documents/secret | wl-copy"
 alias code="code --ozone-platform=wayland"
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
+export ANDROID_HOME=/home/thai/Android/Sdk
+
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
@@ -160,3 +169,4 @@ source ~/.zsh/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
 
 # Load zsh-syntax-highlighting plugin
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source ~/powerlevel10k/powerlevel10k.zsh-theme

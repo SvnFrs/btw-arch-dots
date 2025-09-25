@@ -1,0 +1,150 @@
+configuration {
+    show-icons:                     true;
+    display-window: 		        "";
+    window-match-fields:            "all";
+    window-format:                  "{w} {c} {t}";
+    disable-history:                false;
+    click-to-exit: 		            true;
+    location:                       0;
+}
+
+@import "font.rasi"
+@import "catppuccin-mocha.rasi"
+
+window {
+    transparency:                   "real";
+    background-color:               @base;
+    text-color:                     @text;
+    border:                         2px;
+    border-color:                   @mauve;
+    border-radius:                  0px;
+    width:                          900px;
+    anchor:                         center;
+    x-offset:                       0;
+    y-offset:                       0;
+}
+
+prompt {
+    enabled: 			            true;
+    padding: 			            8px;
+    background-color: 		        @base;
+    text-color: 		            @sky;
+}
+
+textbox-prompt-colon {
+    expand: 			            false;
+    str: 			                "";
+    border-radius:                  10px;
+    background-color:               @surface0;
+    text-color:                     @pink;
+    padding:                        12px 23px 12px 15px;
+    font:			                "JetBrainsMono Nerd Font 15";
+}
+
+entry {
+    background-color:               @base;
+    text-color:                     @text;
+    placeholder-color:              @text;
+    expand:                         true;
+    horizontal-align:               0;
+    placeholder:                    "Search windows...";
+    blink:                          true;
+    border:                  	    0px 0px 2px 0px;
+    border-color:                   @mauve;
+    border-radius:                  10px;
+    padding:                        15px 8px 10px 8px;
+}
+
+inputbar {
+	children: 		                [ textbox-prompt-colon, prompt, entry ];
+    background-color:               @base;
+    text-color:                     @text;
+    expand:                         false;
+    border:                  	    0px 0px 0px 0px;
+    border-radius:                  0px;
+    border-color:                   @mauve;
+    margin:                         0px 0px 0px 0px;
+    padding:                        0px;
+    position:                       center;
+}
+
+case-indicator {
+    background-color:               @base;
+    text-color:                     @text;
+    spacing:                        0;
+}
+
+listview {
+    background-color:               @base;
+    columns:                        1;
+    lines:			                8;
+    spacing:                        4px;
+    cycle:                          false;
+    dynamic:                        true;
+    layout:                         vertical;
+}
+
+mainbox {
+    background-color:               @base;
+    children:                       [ inputbar, listview ];
+    spacing:                        15px;
+    padding:                        15px;
+}
+
+element {
+    background-color:               @base;
+    text-color:                     @text;
+    orientation:                    horizontal;
+    border-radius:                  4px;
+    padding:                        8px 12px 8px 12px;
+}
+
+element-icon {
+    background-color: 	            inherit;
+    text-color:       		        inherit;
+    horizontal-align:               0.5;
+    vertical-align:                 0.5;
+    size:                           24px;
+    border:                         0px;
+}
+
+element-text {
+    background-color: 		        inherit;
+    text-color:       		        inherit;
+    expand:                         true;
+    horizontal-align:               0;
+    vertical-align:                 0.5;
+    margin:                         2px 0px 2px 6px;
+}
+
+element normal.urgent,
+element alternate.urgent {
+    background-color:               @red;
+    text-color:                     @crust;
+    border-radius:                  9px;
+}
+
+element normal.active,
+element alternate.active {
+    background-color:               @green;
+    text-color:                     @crust;
+    border-radius:                  9px;
+}
+
+element selected {
+    background-color:               @surface1;
+    text-color:                     @lavender;
+    border:                  	    0px 0px 0px 3px;
+    border-radius:                  10px;
+    border-color:                   @mauve;
+}
+
+element selected.urgent {
+    background-color:               @red;
+    text-color:                     @crust;
+}
+
+element selected.active {
+    background-color:               @green;
+    text-color:                     @crust;
+}
