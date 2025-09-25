@@ -1,15 +1,41 @@
 {
-  "languages": {
-    "TypeScript": {
-      "show_edit_predictions": true
-    }
-  },
+  "vim_mode": false,
   "active_pane_modifiers": {
     "border_size": 0.0,
-    "inactive_opacity": 1.0,
-    "magnification": 1.0
+    "inactive_opacity": 1.0
   },
   "agent": {
+    "profiles": {
+      "write": {
+        "name": "Write",
+        "tools": {
+          "copy_path": true,
+          "create_directory": true,
+          "delete_path": true,
+          "diagnostics": true,
+          "edit_file": true,
+          "fetch": true,
+          "list_directory": true,
+          "project_notifications": false,
+          "move_path": true,
+          "now": true,
+          "find_path": true,
+          "read_file": true,
+          "grep": true,
+          "terminal": true,
+          "thinking": true,
+          "web_search": true,
+          "open": true
+        },
+        "enable_all_context_servers": true,
+        "context_servers": {}
+      }
+    },
+    "inline_assistant_model": {
+      "provider": "copilot_chat",
+      "model": "claude-sonnet-4"
+    },
+    "default_profile": "ask",
     "button": true,
     "default_height": 320,
     "default_model": {
@@ -18,15 +44,11 @@
     },
     "default_width": 640,
     "dock": "right",
-    "editor_model": {
-      "model": "claude-3-7-sonnet",
-      "provider": "copilot_chat"
-    },
     "enabled": true,
-    "single_file_review": true,
-    "version": "2"
+    "single_file_review": true
   },
   // "autosave": "on_window_change",
+  "auto_indent_on_paste": true,
   "autoscroll_on_clicks": true,
   "bottom_dock_layout": "full",
   "buffer_font_family": "CartographCF Nerd Font",
@@ -44,30 +66,76 @@
     "words": "fallback"
   },
   "current_line_highlight": "gutter",
+  "cursor_blink": false,
   "cursor_shape": "hollow",
   "edit_predictions": {
     "mode": "eager",
     "disabled_globs": [
-      "/.env*",
-      "/*.pem",
-      "/*.key",
-      "/*.cert",
-      "/*.crt",
-      "/.dev.vars",
+      "**/.env*",
+      "**/*.pem",
+      "**/*.key",
+      "**/*.cert",
+      "**/*.crt",
+      "**/.dev.vars",
       "**/secrets.yml"
     ]
   },
   "enable_language_server": true,
+  "ensure_final_newline_on_save": false,
   "features": {
     "edit_prediction_provider": "copilot"
   },
-  "format_on_save": "on",
+  "format_on_save": "off",
   "formatter": "language_server",
   "icon_theme": "Catppuccin Mocha",
   "indent_guides": {
     // "coloring": "indent_aware",
     "enabled": true
   },
+  "inline_code_actions": true,
+  "lsp": {
+    "discord_presence": {
+      "initialization_options": {
+        // Application ID for the rich presence (don't touch it unless you know what you're doing)
+        "application_id": "1263505205522337886",
+        // Base URL for all language icons
+        "base_icons_url": "https://raw.githubusercontent.com/xhyrom/zed-discord-presence/main/assets/icons/",
+        // "state": "Working on {filename}",
+        "state": "Working on stuff",
+        // "details": "In {workspace}",
+        "details": "In somewhere",
+        // URL for the large image
+        "large_image": "{base_icons_url}/{language:lo}.png", // :lo lowercase the language name
+        "large_text": "{language:u}", // :u capitalizes the first letter
+        // URL for the small image
+        "small_image": "{base_icons_url}/zed.png",
+        "small_text": "Zed",
+        // Idle settings - when you're inactive
+        "idle": {
+          "timeout": 3000, // Idle timeout in seconds (300 seconds = 5 minutes)
+          // Action to take when idle
+          // `change_activity` - changes the activity to idle with the following details
+          // `clear_activity` - clears the activity (hides it)
+          "action": "change_activity",
+          "state": "Idling",
+          "details": "In Zed",
+          "large_image": "{base_icons_url}/zed.png",
+          "large_text": "Zed",
+          "small_image": "{base_icons_url}/idle.png",
+          "small_text": "Chilling"
+        },
+        // Rules to disable presence in specific workspaces
+        "rules": {
+          "mode": "blacklist", // Can also be "whitelist"
+          "paths": [
+            "absolute path"
+          ]
+        },
+        "git_integration": true
+      }
+    }
+  },
+  "selection_highlight": true,
   "scrollbar": {
     "axes": {
       "horizontal": true,
@@ -81,6 +149,7 @@
     "selected_text": true,
     "show": "auto"
   },
+  "show_completion_documentation": true,
   "show_completions_on_input": true,
   "show_edit_predictions": true,
   "soft_wrap": "editor_width",
@@ -100,5 +169,6 @@
     "quick_actions": true,
     "selections_menu": true
   },
+  "ui_font_family": "JetBrainsMono Nerd Font Propo",
   "ui_font_size": 16
 }
