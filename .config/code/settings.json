@@ -1,0 +1,137 @@
+{
+  "editor.fontWeight": "normal",
+  "editor.fontLigatures": true,
+  "editor.fontFamily": "'CartographCF Nerd Font'",
+  "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "zsh"
+    },
+    "fish": {
+      "path": "fish"
+    },
+    "tmux": {
+      "path": "tmux",
+      "icon": "terminal-tmux"
+    },
+    "pwsh": {
+      "path": "pwsh",
+      "icon": "terminal-powershell"
+    }
+  },
+  "editor.smoothScrolling": false,
+  "workbench.list.smoothScrolling": false,
+  "terminal.integrated.smoothScrolling": false,
+  "editor.cursorSmoothCaretAnimation": "off",
+  "editor.cursorBlinking": "blink",
+  "breadcrumbs.enabled": false,
+  "editor.codeLens": false,
+  "editor.inlayHints.enabled": "off",
+  "editor.occurrencesHighlight": "off",
+  "editor.stickyScroll.enabled": false,
+  "workbench.editor.enablePreview": true,
+  "workbench.view.experimental.allowMovingToNewContainer": false,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.hg": true,
+    "**/.svn": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/.cache": true,
+    "**/.venv": true,
+    "**/coverage": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/.cache": true,
+    "**/.venv": true,
+    "**/coverage": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/.cache/**": true,
+    "**/.venv/**": true,
+    "**/coverage/**": true
+  },
+  "git.autoRepositoryDetection": "openEditors",
+  "git.untrackedChanges": "hidden",
+  "git.countBadge": "tracked",
+  "git.decorations.enabled": false,
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  "typescript.suggest.completeFunctionCalls": false,
+  "javascript.suggest.completeFunctionCalls": false,
+  "typescript.referencesCodeLens.enabled": false,
+  "typescript.inlayHints.parameterNames.enabled": "none",
+  "typescript.tsserver.useSeparateSyntaxServer": true,
+  "typescript.tsserver.enableTracing": false,
+  "gopls": {
+    "ui.semanticTokens": false,
+    "semanticTokens": false,
+    "staticcheck": false,
+    "directoryFilters": [
+      "-node_modules",
+      "-dist",
+      "-build",
+      "-.git",
+      "-.next",
+      "-.turbo"
+    ],
+    "analyses": {
+      "unusedparams": true,
+      "shadow": false
+    },
+    "completionBudget": "50ms"
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "terminal.integrated.gpuAcceleration": "auto",
+  "telemetry.telemetryLevel": "off",
+  "workbench.enableExperiments": false,
+  "explorer.autoReveal": false,
+  "vscode-office.editorTheme": "Auto",
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "innocodyai.addressURL": "https://server.innocody.ai",
+  "innocodyai.apiKey": "innotech",
+  "chat.agent.maxRequests": 1000,
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "window.titleBarStyle": "native",
+  "git.enabled": false,
+  "terminal.integrated.enablePersistentSessions": false,
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "terminal.integrated.restoreWindows": "never",
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "workbench.startupEditor": "none",
+  "workbench.editor.restoreViewState": false,
+  "workbench.editor.openPositioning": "left",
+  "workbench.panel.opensMaximized": "never",
+  "extensions.ignoreRecommendations": true,
+  "workbench.tips.enabled": false,
+  "workbench.welcomePage.walkthroughs.openOnInstall": false,
+  "update.mode": "manual",
+  "scm.diffDecorations": "none",
+  "scm.diffDecorationsGutterWidth": 1,
+  "problems.autoReveal": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.editor.showTabs": "single",
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  "chat.mcp.autostart": "newAndOutdated"
+}
