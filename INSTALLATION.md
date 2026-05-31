@@ -208,6 +208,24 @@ sudo pacman -S base-devel
 yay -Sc --aur
 ```
 
+## Fonts & Icon Themes
+
+To keep the repo small, the large reinstallable fonts and icon themes are **not**
+vendored in git. Reinstall them in one command after cloning:
+
+```bash
+./scripts/install-assets.sh
+```
+
+This installs:
+- **JetBrains Mono Nerd Font** (Mono + NL) via `pacman -S ttf-jetbrains-mono-nerd`
+- **Catppuccin-SE** icon theme (from `ljmill/catppuccin-icons` releases) into `~/.icons`
+- **GoogleDot** cursors, Black + White (from `ful1e5/Google_Cursor` releases) into `~/.icons`
+
+The following extras *are* still vendored in the repo because they aren't freely
+re-downloadable: **Cartograph CF** Nerd Font (commercial), the **Graphite-Recolored-\***
+icon themes (custom recolors), and the **oreo_\*** cursor variants.
+
 ## Advanced Usage
 
 ### Manual Script Components

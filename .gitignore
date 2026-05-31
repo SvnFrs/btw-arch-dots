@@ -1,0 +1,16 @@
+# Large, reinstallable assets are NOT vendored — reinstall with:
+#   ./scripts/install-assets.sh
+# Keeping these untracked stops them from bloating the repo again.
+
+# JetBrains Mono Nerd Font (pacman: ttf-jetbrains-mono-nerd)
+.local/share/fonts/nerd-fonts/JetBrainsMono*
+
+# Catppuccin-SE icon theme (github: ljmill/catppuccin-icons)
+.icons/Catppuccin-SE/
+
+# GoogleDot cursors (github: ful1e5/Google_Cursor)
+.icons/GoogleDot-Black/
+.icons/GoogleDot-White/
+
+# Fontconfig cache
+.local/share/fonts/.uuid
