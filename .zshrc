@@ -149,11 +149,10 @@ alias cd="z"
 alias ls="eza"
 alias zed="zeditor"
 alias btw="neofetch"
-alias password="cat ~/Documents/secret | wl-copy"
+alias bitwarden="cat ~/Documents/Secrets/bitwarden | wl-copy"
 alias code="code --ozone-platform=wayland"
+alias nvidia-run="__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia"
 source ~/powerlevel10k/powerlevel10k.zsh-theme
-
-export ANDROID_HOME=/home/thai/Android/Sdk
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
@@ -164,9 +163,11 @@ export TERM=xterm-256color
 export ANDROID_HOME=/home/thai/Android/Sdk
 
 export PATH=$PATH:/opt/glassfish/bin
+export PATH="/home/thai/.bun/bin:$PATH"
 # Load catppuccin zsh-syntax-highlighting plugin
-source ~/.zsh/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
+source ~/.zsh/themes/catppuccin_macchiato-zsh-syntax-highlighting.zsh
 
 # Load zsh-syntax-highlighting plugin
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source ~/powerlevel10k/powerlevel10k.zsh-theme
+source /usr/share/nvm/init-nvm.sh

@@ -39,7 +39,7 @@
     "button": true,
     "default_height": 320,
     "default_model": {
-      "model": "claude-sonnet-4",
+      "model": "claude-sonnet-4.5",
       "provider": "copilot_chat"
     },
     "default_width": 640,
@@ -69,6 +69,7 @@
   "cursor_blink": false,
   "cursor_shape": "hollow",
   "edit_predictions": {
+    "provider": "copilot",
     "mode": "eager",
     "disabled_globs": [
       "**/.env*",
@@ -82,9 +83,6 @@
   },
   "enable_language_server": true,
   "ensure_final_newline_on_save": false,
-  "features": {
-    "edit_prediction_provider": "copilot"
-  },
   "format_on_save": "off",
   "formatter": "language_server",
   "icon_theme": "Catppuccin Mocha",
@@ -161,7 +159,7 @@
   "theme": {
     "dark": "Catppuccin Mocha",
     "light": "One Light",
-    "mode": "system"
+    "mode": "dark"
   },
   "toolbar": {
     "agent_review": true,

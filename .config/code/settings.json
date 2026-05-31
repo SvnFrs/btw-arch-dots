@@ -1,6 +1,7 @@
 {
   "editor.fontWeight": "normal",
   "editor.fontLigatures": true,
+  // "editor.fontFamily": "'CartographCF Nerd Font', 'JetBrainsMono Nerd Font'",
   "editor.fontFamily": "'CartographCF Nerd Font'",
   "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
   "terminal.integrated.cursorBlinking": true,
@@ -24,11 +25,12 @@
       "icon": "terminal-powershell"
     }
   },
+  // --- Paint/UI cuts ---
   "editor.smoothScrolling": false,
   "workbench.list.smoothScrolling": false,
   "terminal.integrated.smoothScrolling": false,
   "editor.cursorSmoothCaretAnimation": "off",
-  "editor.cursorBlinking": "blink",
+  "editor.cursorBlinking": "blink", // smooth is cute but janky
   "breadcrumbs.enabled": false,
   "editor.codeLens": false,
   "editor.inlayHints.enabled": "off",
@@ -36,6 +38,7 @@
   "editor.stickyScroll.enabled": false,
   "workbench.editor.enablePreview": true,
   "workbench.view.experimental.allowMovingToNewContainer": false,
+  // --- File watching: stop scanning the world ---
   "files.exclude": {
     "**/.git": true,
     "**/.hg": true,
@@ -69,17 +72,21 @@
     "**/.venv/**": true,
     "**/coverage/**": true
   },
+  // --- Git in large repos ---
   "git.autoRepositoryDetection": "openEditors",
-  "git.untrackedChanges": "hidden",
+  "git.untrackedChanges": "separate",
   "git.countBadge": "tracked",
-  "git.decorations.enabled": false,
+  "git.decorations.enabled": true,
+  // --- TypeScript/JavaScript (tsserver) ---
   "typescript.tsserver.maxTsServerMemory": 4096,
   "typescript.suggest.completeFunctionCalls": false,
   "javascript.suggest.completeFunctionCalls": false,
+  // Reduce background noise in huge monorepos:
   "typescript.referencesCodeLens.enabled": false,
   "typescript.inlayHints.parameterNames.enabled": "none",
   "typescript.tsserver.useSeparateSyntaxServer": true,
   "typescript.tsserver.enableTracing": false,
+  // --- Go (gopls) ---
   "gopls": {
     "ui.semanticTokens": false,
     "semanticTokens": false,
@@ -98,40 +105,159 @@
     },
     "completionBudget": "50ms"
   },
-  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
+  // --- Terminal/GPU (Arch often smoother with auto/off) ---
   "terminal.integrated.gpuAcceleration": "auto",
+  // --- Telemetry/experiments ---
   "telemetry.telemetryLevel": "off",
   "workbench.enableExperiments": false,
+  // --- Explorer QoL ---
   "explorer.autoReveal": false,
   "vscode-office.editorTheme": "Auto",
   "github.copilot.nextEditSuggestions.enabled": true,
   "innocodyai.addressURL": "https://server.innocody.ai",
   "innocodyai.apiKey": "innotech",
   "chat.agent.maxRequests": 1000,
+  "chat.editor.fontFamily": "'CartographCF Nerd Font'",
+  "chat.editor.fontSize": 13,
+  "chat.editor.fontWeight": "normal",
+  "chat.commandCenter.enabled": false,
   "workbench.colorTheme": "Catppuccin Mocha",
   "window.titleBarStyle": "native",
-  "git.enabled": false,
+  "git.enabled": true,
   "terminal.integrated.enablePersistentSessions": false,
   "terminal.integrated.persistentSessionReviveProcess": "never",
   "terminal.integrated.restoreWindows": "never",
   "terminal.integrated.defaultProfile.linux": "zsh",
   "workbench.startupEditor": "none",
-  "workbench.editor.restoreViewState": false,
-  "workbench.editor.openPositioning": "left",
+  "workbench.editor.restoreViewState": true,
+  "workbench.editor.openPositioning": "left", // cheap layout
   "workbench.panel.opensMaximized": "never",
   "extensions.ignoreRecommendations": true,
   "workbench.tips.enabled": false,
-  "workbench.welcomePage.walkthroughs.openOnInstall": false,
-  "update.mode": "manual",
+  "update.mode": "manual", // skip update checks at startup
   "scm.diffDecorations": "none",
   "scm.diffDecorationsGutterWidth": 1,
   "problems.autoReveal": false,
-  "explorer.confirmDragAndDrop": false,
+  "explorer.confirmDragAndDrop": false, // already set earlier; keeps UI calmer
   "workbench.editor.showTabs": "single",
   "extensions.autoCheckUpdates": false,
   "extensions.autoUpdate": false,
-  "chat.mcp.autostart": "newAndOutdated"
+  "chat.mcp.autostart": "newAndOutdated",
+  "notebook.output.scrolling": true,
+  "python.analysis.typeCheckingMode": "standard",
+  "mcpFigma.aiAssistant": "github-copilot",
+  "mcpFigma.autoStartWebSocket": true,
+  "catppuccin.accentColor": "pink",
+  "workbench.iconTheme": "catppuccin-mocha",
+  "chat.mcp.gallery.enabled": true,
+  "chat.agentSessionProjection.enabled": true,
+  "chat.checkpoints.showFileChanges": true,
+  "chat.restoreLastPanelSession": true,
+  "chat.viewSessions.orientation": "stacked",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // disable minimap
+  "editor.minimap.enabled": false,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "diffEditor.maxComputationTime": 0,
+  "terminal.integrated.automationProfile.linux": {
+    "path": "bash",
+    "icon": "terminal-bash"
+  },
+  "terminal.integrated.shellIntegration.decorationsEnabled": "never",
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "git.blame.editorDecoration.enabled": true,
+  "editor.unicodeHighlight.nonBasicASCII": false,
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": true,
+    "scminput": false
+  },
+  "dart.openDevTools": "flutter",
+  "workbench.colorCustomizations": {
+    "editor.background": "#1e1e2e",
+    "sideBar.background": "#1e1e2e",
+    "sideBar.foreground": "#cdd6f4",
+    "sideBar.border": "#00000000",
+    "activityBar.border": "#00000000",
+    "editorGroup.border": "#00000000",
+    "panel.border": "#00000000",
+    "chat.requestBorder": "#00000000",
+    "chat.requestBackground": "#1e1e2e",
+    "chat.slashCommandBackground": "#1e1e2e",
+    "editorWidget.background": "#1e1e2e",
+    "editorWidget.border": "#00000000",
+    "focusBorder": "#00000000",
+    "input.background": "#1e1e2e",
+    "input.foreground": "#cdd6f4",
+    "input.placeholderForeground": "#7f849c",
+    "input.border": "#00000000",
+    "inputOption.activeBorder": "#00000000",
+    "interactiveEditor.background": "#1e1e2e"
+  },
+  "apc.stylesheet": {
+    ".sidebar .title": "display: none !important;",
+    ".interactive-session, .interactive-list, .interactive-session .monaco-list-rows": "background: var(--vscode-editor-background) !important;",
+    ".chat-view-title-container": "border-bottom: 0 !important; background: var(--vscode-editor-background) !important;",
+    ".interactive-item-container, .interactive-item-container .value, .interactive-item-container .chat-markdown-part, .interactive-item-container .rendered-markdown, .interactive-item-container .rendered-markdown p": "width: 100% !important; max-width: none !important; background: var(--vscode-editor-background) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;",
+    ".interactive-session .monaco-tl-indent, .interactive-session .monaco-tl-twistie": "display: none !important; width: 0 !important; padding: 0 !important;",
+    ".interactive-session .monaco-tl-row, .interactive-session .monaco-tl-contents, .interactive-session .monaco-list-row": "margin: 0 !important; padding: 0 !important; left: 0 !important;",
+    ".interactive-item-container > .header, .interactive-item-container > .chat-footer-toolbar, .interactive-item-container > .checkpoint-container, .interactive-item-container > .request-hover": "display: none !important;",
+    ".interactive-input-part, .interactive-input-part:focus-within, .interactive-input-part::before, .interactive-input-part::after, .interactive-input-and-side-toolbar, .chat-input-container, .chat-input-container::before, .chat-input-container::after, .chat-editor-container, .interactive-input-editor, .interactive-input-editor:focus-within, .chat-input-toolbars, .chat-attachments-container, .chat-attached-context, .chat-attached-context-attachment, .chat-attached-context-pill": "margin: 0 !important; padding: 0 !important; border: 0 !important; outline: 0 !important; border-radius: 0 !important; background: var(--vscode-editor-background) !important; box-shadow: none !important;",
+    ".interactive-input-editor, .interactive-input-part .monaco-editor, .interactive-input-part .monaco-editor-background, .interactive-input-part .editor-scrollable, .interactive-input-part .lines-content": "background: var(--vscode-editor-background) !important; border: 0 !important; box-shadow: none !important;",
+    ".chat-markdown-part, .chat-markdown-part.rendered-markdown, .chat-markdown-part pre, .chat-markdown-part code, .chat-markdown-part .code, .chat-markdown-part .monaco-editor, .chat-markdown-part .monaco-editor-background": "background: var(--vscode-editor-background) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important;",
+    ".interactive-session, .interactive-session *:not(.codicon), .chat-markdown-part, .chat-markdown-part *, .interactive-input-editor .native-edit-context, .interactive-input-editor .view-lines, .interactive-input-editor .view-overlays, .interactive-input-editor .margin-view-overlays, .interactive-input-editor .cursors-layer, .interactive-input-editor .view-line, .interactive-input-editor .view-line span": "font-family: var(--vscode-editor-font-family) !important; font-size: var(--vscode-editor-font-size) !important; font-weight: var(--vscode-editor-font-weight) !important;",
+    ".chat-used-context, .progress-container, .chat-mcp-servers-interaction, .checkpoint-file-changes-summary": "display: none !important;",
+    ".chat-secondary-toolbar": "display: none !important;",
+    ".chat-input-container .codicon, .chat-view-title-container .codicon": "font-family: codicon !important;",
+    ".interactive-session .slider": "width: 4px !important; background: var(--vscode-scrollbarSlider-background) !important;"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.wordWrap": "on",
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "terminal.integrated.commandsToSkipShell": [
+    "kilo-code.new.agentManagerOpen",
+    "kilo-code.new.agentManager.showTerminal"
+  ],
+  "http.systemCertificatesNode": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.js",
+    "*.js": "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
+    "*.jsx": "${capture}.js",
+    "*.tsx": "${capture}.ts",
+    "tsconfig.json": "tsconfig.*.json",
+    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, bun.lock",
+    "pubspec.yaml": "pubspec.lock,pubspec_overrides.yaml,.packages,.flutter-plugins,.flutter-plugins-dependencies,.metadata",
+    "*.dart": "${capture}.g.dart",
+    "*.sqlite": "${capture}.${extname}-*",
+    "*.db": "${capture}.${extname}-*",
+    "*.sqlite3": "${capture}.${extname}-*",
+    "*.db3": "${capture}.${extname}-*",
+    "*.sdb": "${capture}.${extname}-*",
+    "*.s3db": "${capture}.${extname}-*"
+  },
+  "workbench.editor.empty.hint": "hidden",
+  "chat.mcp.serverSampling": {
+    "Global in Code: synapse-windows": {
+      "allowedModels": [
+        "copilot/auto",
+        "copilotcli/claude-sonnet-4.6"
+      ]
+    }
+  },
+"terminal.integrated.mouseWheelScrollSensitivity": 3,
+"claudeCode.preferredLocation": "panel"
 }
