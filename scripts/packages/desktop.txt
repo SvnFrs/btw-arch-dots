@@ -1,0 +1,55 @@
+# Wayfire session — every package a tracked config actually depends on.
+# Verified against the configs in home/, not copied from a blog post.
+
+# compositor — NOT installed from a package.
+# Wayfire here is built from github.com/SvnFrs/wayfire into /usr/local, because
+# the config uses `spread-overview`, which only exists in that fork. Installing
+# the `wayfire` / `wayfire-plugins-extra` / `wlroots0.19` packages gives you a
+# DIFFERENT compositor that cannot load this config.
+#   ->  scripts/build-wayfire.sh   and   docs/wayfire-build.md
+python-wayfire            # ~/.config/ipc-scripts/*.py talk to wayfire over IPC
+xorg-xwayland
+
+# session plumbing
+polkit-gnome              # wayfire.ini [autostart] polkit-agent
+gnome-keyring
+seahorse
+xdg-desktop-portal-wlr    # screencast; ss-fix.sh restarts it after login
+xdg-desktop-portal-gtk
+
+# shell surface
+kitty
+rofi
+swaync                    # notification daemon (replaced mako)
+swaylock                  # bound to <super><shift>ESC in wayfire.ini
+wlogout
+nautilus
+awww                      # wallpaper daemon
+
+# screenshots + recording — driven by ~/.config/swaync/actions.sh
+grim
+slurp
+wf-recorder
+wl-clipboard
+
+# hardware controls
+brightnessctl
+wlr-randr                 # <super>C / <super>A output switching
+alsa-utils
+pavucontrol
+
+# input method
+fcitx5
+fcitx5-configtool
+fcitx5-unikey
+
+# theming — nwg-look writes gtk-3.0/gtk-4.0/xsettingsd/.gtkrc-2.0
+nwg-look
+xsettingsd
+catppuccin-gtk-theme-mocha
+
+# fonts
+noto-fonts
+noto-fonts-cjk
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd

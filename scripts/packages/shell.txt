@@ -1,0 +1,28 @@
+# Shell tooling. Every entry is referenced by home/.zshrc — checked, not guessed.
+zsh
+zsh-syntax-highlighting   # sourced at the end of .zshrc
+eza                       # alias ls
+zoxide                    # alias cd
+thefuck                   # lazy-loaded `fuck` function
+fastfetch                 # alias btw   (neofetch is archived upstream)
+nvm                       # lazy-loaded node/npm/npx
+bun
+rustup                    # .zshrc puts ~/.cargo/bin on PATH
+chromium                  # GSTACK_CHROMIUM_PATH points at /usr/bin/chromium
+neovim                    # $EDITOR
+fzf                       # FZF_DEFAULT_OPTS is set for it
+ranger                    # RANGER_LOAD_DEFAULT_RC=false is set for it
+btop
+git
+github-cli
+ripgrep
+tmux
+man-db
+unzip
+zip
+7zip
+wget
+
+# NOT packages — .zshrc sources these from $HOME. scripts/bootstrap.sh clones them:
+#   ~/.oh-my-zsh      https://github.com/ohmyzsh/ohmyzsh
+#   ~/powerlevel10k   https://github.com/romkatv/powerlevel10k

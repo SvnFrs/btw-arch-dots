@@ -1,16 +1,27 @@
-# Large, reinstallable assets are NOT vendored — reinstall with:
-#   ./scripts/install-assets.sh
-# Keeping these untracked stops them from bloating the repo again.
+# ─────────────────────────────────────────────────────────────────────────────
+# Reinstallable assets are NOT vendored — get them with:
+#     ./scripts/install-assets.sh
+# Keeping them untracked is what stops this repo bloating again.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# JetBrains Mono Nerd Font (pacman: ttf-jetbrains-mono-nerd)
-.local/share/fonts/nerd-fonts/JetBrainsMono*
+# JetBrains Mono Nerd Font — pacman: ttf-jetbrains-mono-nerd (installs to /usr)
+home/.local/share/fonts/nerd-fonts/
 
-# Catppuccin-SE icon theme (github: ljmill/catppuccin-icons)
-.icons/Catppuccin-SE/
+# Catppuccin-SE icon theme — github: ljmill/catppuccin-icons
+home/.icons/Catppuccin-SE/
 
-# GoogleDot cursors (github: ful1e5/Google_Cursor)
-.icons/GoogleDot-Black/
-.icons/GoogleDot-White/
+# GoogleDot cursors — github: ful1e5/Google_Cursor
+home/.icons/GoogleDot-Black/
+home/.icons/GoogleDot-White/
 
-# Fontconfig cache
-.local/share/fonts/.uuid
+# Caches and generated files
+home/.local/share/fonts/.uuid
+**/__pycache__/
+*.pyc
+
+# dots: files replaced by `dots link` are parked here, never committed
+.backups/
+
+# Machine-local overrides that must not be published
+home/.gitconfig.local
+home/.config/zsh/secrets.zsh

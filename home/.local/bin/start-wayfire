@@ -1,0 +1,9 @@
+#!/bin/sh
+export XDG_CURRENT_DESKTOP=wayfire
+export XDG_SESSION_TYPE=wayland
+export OZONE_PLATFORM=wayland
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+export INPUT_METHOD=fcitx
+exec wayfire "$@"

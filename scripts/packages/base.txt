@@ -1,0 +1,25 @@
+# Base system + boot. Matches what is actually installed on this machine:
+# GRUB on /dev/nvme1n1p1 (ESP, mounted at /boot/efi), ext4 root on nvme1n1p2.
+base
+base-devel
+linux-zen
+linux-zen-headers
+linux-firmware
+sof-firmware              # audio DSP firmware — the Predator needs it for speakers
+grub
+efibootmgr
+os-prober                 # dual-boot: Windows lives on the other NVMe (nvme0n1)
+ntfs-3g                   # ...and its partitions are NTFS
+networkmanager
+nm-connection-editor
+bluez
+bluez-utils
+blueman
+pipewire-pulse
+pipewire-alsa
+wireplumber
+sudo
+reflector
+gptfdisk
+usbutils
+auto-cpufreq              # enabled as a service; laptop frequency scaling

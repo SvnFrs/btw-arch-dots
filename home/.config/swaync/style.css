@@ -1,0 +1,216 @@
+/* =========================================================================
+   swaync — style.css   |   Catppuccin Mocha   |   swaync 0.12.x (GTK4)
+
+   swaync 0.12.0 da chuyen tu GTK3 sang GTK4 + libadwaita (Arch, 2025-07-12:
+   deps doi gtk3 -> gtk4, gtk-layer-shell -> gtk4-layer-shell, + libadwaita).
+   Upstream ghi ro: "Due to the GTK 4 port, some custom CSS themes might have
+   to be updated."
+
+   File nay da bo cac rule kieu GTK3 gay loi that trong log cua ban:
+     - `margin: -10px` tren `scale slider`  ->  GTK4 bao
+       "GtkGizmo (slider) reported min width -2, but sizes must be >= 0"
+       (meo an cuc tron bang margin am chi hop le o GTK3)
+     - cac selector cho widget da bo (label, buttons-grid, menubar)
+
+   Khong con @import: mot file duy nhat, khong con phu thuoc thu tu dong.
+   ========================================================================= */
+
+/* --- Catppuccin Mocha --- */
+@define-color base     #1e1e2e;
+@define-color mantle   #181825;
+@define-color crust    #11111b;
+@define-color text     #cdd6f4;
+@define-color surface0 #313244;
+@define-color surface1 #45475a;
+@define-color blue     #89b4fa;
+@define-color red      #f38ba8;
+@define-color mauve    #cba6f7;
+
+* {
+  font-family: "JetBrainsMono Nerd Font", "JetBrainsMonoNL Nerd Font",
+               "JetBrains Mono", sans-serif;
+}
+
+/* --- Khung panel --- */
+.control-center {
+  background: alpha(@base, 0.95);
+  border: 1px solid @surface1;
+  border-radius: 16px;
+  padding: 4px;
+}
+
+/* --- Tieu de --- */
+.widget-title {
+  color: @text;
+  padding: 4px;
+  margin: 10px 14px 5px 14px;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.widget-title > button {
+  font-size: 12px;
+  color: @text;
+  background: @surface0;
+  border: 1px solid @surface1;
+  border-radius: 8px;
+  padding: 4px 12px;
+}
+
+.widget-title > button:hover {
+  background: @red;
+  color: @crust;
+}
+
+/* --- Do Not Disturb --- */
+.widget-dnd {
+  background: @mantle;
+  padding: 8px 16px;
+  margin: 5px 10px;
+  border-radius: 12px;
+  color: @text;
+  border: 1px solid @surface0;
+}
+
+.widget-dnd > switch {
+  border-radius: 12px;
+  background: @surface1;
+}
+
+.widget-dnd > switch:checked {
+  background: @blue;
+}
+
+/* --- Notifications ---
+   `control-center-height` trong config.json da doi tu -1 sang 850.
+   -1 = "fit all widgets": panel co lai vua khit noi dung, nen khi it widget thi
+   danh sach notification khong con cho. Va `notifications.vexpand = true` can
+   MOT CHIEU CAO CO DINH de gian ra ben trong — ket hop voi -1 thi hai cai trieu
+   tieu nhau.
+   Muon panel cao het man hinh thay vi co dinh 850px: dat "fit-to-screen": true
+   trong config.json (luc do control-center-height bi bo qua). */
+.notification-row {
+  margin: 5px 10px;
+}
+
+.notification {
+  background: @mantle;
+  border-radius: 12px;
+  border: 1px solid @surface0;
+}
+
+.notification-content {
+  padding: 14px;
+}
+
+.summary {
+  font-weight: bold;
+}
+
+/* Than notification o dang MONOSPACE — de output cua `cal` thang cot.
+   Font mac dinh cua file nay da la JetBrainsMono (monospace) nhung khai bao
+   ro rang o day de doi font chinh sau nay khong lam vo lich. */
+.notification .body,
+.body {
+  font-family: "JetBrainsMono Nerd Font", "JetBrainsMonoNL Nerd Font", monospace;
+  font-weight: normal;
+}
+
+/* Thong bao urgency=critical — day la chi bao "dang ghi man hinh" */
+.critical {
+  border-color: @red;
+}
+
+/* --- MPRIS --- */
+.widget-mpris {
+  background: @mantle;
+  padding: 6px;
+  margin: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid @surface0;
+}
+
+.widget-mpris player {
+  background: @base;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* --- Volume ---
+   CUC TRON DUOC HIEN LAI. Truoc day no bi an bang `opacity: 0` + `margin:
+   -10px`; o GTK4 margin am lam GTK bao loi kich thuoc am, va an cuc tron thi
+   khong con cach nao doc duoc muc am luong (swaync khong ve so % tren thanh
+   truot). Hien no ra la xong, khong can script nao ca. */
+.widget-volume {
+  background: @mantle;
+  padding: 12px 16px;
+  margin: 5px 10px 10px 10px;
+  border-radius: 12px;
+  border: 1px solid @surface0;
+  color: @text;
+}
+
+.widget-volume scale trough {
+  border-radius: 8px;
+  background: @surface0;
+  min-height: 10px;
+}
+
+.widget-volume scale trough highlight {
+  border-radius: 8px;
+  background: @mauve;
+}
+
+.widget-volume scale slider {
+  background: @text;
+  border: 2px solid @mantle;
+  border-radius: 50%;
+  min-width: 14px;
+  min-height: 14px;
+}
+
+/* =========================================================================
+   ANIMATION  (phan ricing — xoa khoi file la ve nhu cu, khong anh huong gi)
+
+   Ba tang doc lap, thu tu de nhat -> kho nhat:
+
+   1. swaync `transition-time` trong config.json  (VERIFIED la option that,
+      man swaync(5)). Da dat 350ms.
+   2. Wayfire [animate] trong wayfire.ini — compositor lam mo dan layer-shell
+      surface. Xem khoi [animate] trong wayfire.ini.
+   3. CSS @keyframes ben duoi. GTK4 co ho tro CSS animation.
+      DAY LA THU NGHIEM: toi khong kiem chung duoc swaync co dung lai widget
+      `.control-center` giua cac lan mo hay khong. Neu dung lai thi animation
+      chi chay dung lan dau. Khong chay thi xoa khoi nay di.
+
+   Chi dung `opacity` — GTK4 chac chan ho tro. `transform: translateY()` cung
+   co trong GTK4 CSS nhung it duoc dung trong swaync theme, de o comment.
+   ========================================================================= */
+
+@keyframes cc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.control-center {
+  animation: cc-fade-in 250ms ease-out;
+  /* Muon truot xuong nua thi doi 2 dong tren thanh:
+     animation: cc-slide-in 250ms ease-out;
+     va bo comment khoi @keyframes duoi day. */
+}
+
+/*
+@keyframes cc-slide-in {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+*/
+
+@keyframes noti-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.notification-row {
+  animation: noti-in 200ms ease-out;
+}

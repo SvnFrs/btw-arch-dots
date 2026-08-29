@@ -1,0 +1,60 @@
+{
+  "$schema": "/etc/xdg/swaync/configSchema.json",
+  "positionX": "right",
+  "positionY": "top",
+  "control-center-margin-top": 12,
+  "control-center-margin-bottom": 12,
+  "control-center-margin-right": 12,
+  "control-center-margin-left": 12,
+  "control-center-width": 420,
+  "control-center-height": 850,
+  "fit-to-screen": false,
+  "layer": "overlay",
+  "control-center-layer": "top",
+  "cssPriority": "user",
+  "timeout": 6,
+  "timeout-low": 3,
+  "timeout-critical": 0,
+  "hide-on-clear": true,
+  "hide-on-action": true,
+  "keyboard-shortcuts": true,
+  "notification-2fa-action": true,
+  "notification-inline-replies": false,
+  "image-visibility": "when-available",
+  "transition-time": 350,
+  "script-fail-notify": true,
+  "widgets": [
+    "title",
+    "dnd",
+    "volume",
+    "mpris",
+    "notifications"
+  ],
+  "widget-config": {
+    "title": {
+      "text": "Notifications",
+      "clear-all-button": true,
+      "button-text": "Clear All"
+    },
+    "dnd": {
+      "text": "Do Not Disturb"
+    },
+    "volume": {
+      "label": "Volume",
+      "show-per-app": false
+    },
+    "mpris": {
+      "image-size": 96,
+      "image-radius": 12
+    },
+    "notifications": {
+      "vexpand": true
+    }
+  },
+  "scripts": {
+    "critical-alert": {
+      "exec": "paplay /usr/share/sounds/freedesktop/stereo/dialog-warning.oga",
+      "urgency": "Critical"
+    }
+  }
+}
