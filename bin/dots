@@ -1,0 +1,498 @@
+#!/usr/bin/env bash
+#
+# dots — deploy and drift-track this dotfiles repo.
+#
+# The whole point: answer "which file in the repo is outdated?" without you
+# having to remember what you edited. Two mechanisms do that:
+#
+#   link entries  cannot drift, because $HOME points into the repo. Editing the
+#                 live file IS editing the repo, so `git status` is the report.
+#   copy entries  are snapshots of files their app rewrites. Those can drift,
+#                 so `dots status` diffs them and says which side is newer.
+#
+# Usage:  dots <command> [path…]
+# Run `dots help` for the full list.
+
+set -euo pipefail
+
+REPO="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+MANIFEST="$REPO/dots.conf"
+BACKUP_DIR="$REPO/.backups/$(date +%Y%m%d-%H%M%S)"
+
+# ── output ────────────────────────────────────────────────────────────────────
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+  R=$'\033[31m'; G=$'\033[32m'; Y=$'\033[33m'; B=$'\033[34m'
+  DIM=$'\033[2m'; BOLD=$'\033[1m'; N=$'\033[0m'
+else
+  R= G= Y= B= DIM= BOLD= N=
+fi
+die()  { printf '%sdots: %s%s\n' "$R" "$*" "$N" >&2; exit 1; }
+warn() { printf '%sdots: %s%s\n' "$Y" "$*" "$N" >&2; }
+info() { printf '%s==>%s %s\n' "$B" "$N" "$*"; }
+
+[[ -f $MANIFEST ]] || die "no manifest at $MANIFEST"
+
+# ── manifest ──────────────────────────────────────────────────────────────────
+# Emits "<mode>\t<repopath>" per entry, comments and blanks stripped.
+manifest() {
+  sed -e 's/#.*//' -e 's/[[:space:]]*$//' "$MANIFEST" \
+    | awk 'NF >= 2 { printf "%s\t%s\n", $1, $2 }'
+}
+
+# Absolute live destination for a repo-relative path.
+#   home/.zshrc          -> /home/you/.zshrc
+#   system/etc/foo.conf  -> /etc/foo.conf
+target_of() {
+  case "$1" in
+    home/*)   printf '%s/%s' "$HOME" "${1#home/}" ;;
+    system/*) printf '/%s'   "${1#system/}" ;;
+    *) die "manifest path must start with home/ or system/: $1" ;;
+  esac
+}
+
+# ── state ─────────────────────────────────────────────────────────────────────
+# Sets globals STATE and NOTE. Kept as globals so the caller can format freely.
+#   OK BROKEN MISSING NOREPO UNLINKED WRONGLINK DRIFT
+inspect() {
+  local mode=$1 path=$2 src="$REPO/$2" dst
+  dst="$(target_of "$2")"
+  NOTE=""
+
+  if [[ ! -e $src ]]; then
+    STATE=NOREPO; NOTE="not in repo"; return
+  fi
+
+  if [[ $mode == link ]]; then
+    if [[ -L $dst ]]; then
+      local points; points="$(readlink -f -- "$dst" 2>/dev/null || true)"
+      if [[ $points == "$(readlink -f -- "$src")" ]]; then STATE=OK
+      elif [[ -z $points ]]; then STATE=BROKEN; NOTE="dangling symlink"
+      else STATE=WRONGLINK; NOTE="-> $points"; fi
+    elif [[ -e $dst ]]; then
+      STATE=UNLINKED; NOTE="real file, not a symlink — run: dots link"
+    else
+      STATE=MISSING; NOTE="not deployed — run: dots link"
+    fi
+    return
+  fi
+
+  # copy / root
+  if [[ ! -e $dst ]]; then STATE=MISSING; NOTE="not deployed — run: dots push"; return; fi
+  if diff -rq -- "$src" "$dst" >/dev/null 2>&1; then STATE=OK; return; fi
+
+  STATE=DRIFT
+  local ts td
+  ts=$(stat -c %Y -- "$src" 2>/dev/null || echo 0)
+  td=$(stat -c %Y -- "$dst" 2>/dev/null || echo 0)
+  if   (( td > ts )); then NOTE="live is newer  (${DIM}dots pull${N} to update the repo)"
+  elif (( ts > td )); then NOTE="repo is newer  (${DIM}dots push${N} to update the system)"
+  else                     NOTE="same mtime, different content"; fi
+}
+
+# Restrict the manifest to entries matching the user's path arguments.
+# A bare basename, a repo path, or a live path all work.
+select_entries() {
+  if (( $# == 0 )); then manifest; return; fi
+  local mode path want matched=0
+  while IFS=$'\t' read -r mode path; do
+    for want in "$@"; do
+      want="${want%/}"
+      # substring match, so `dots diff gtk-3.0`, `dots diff kitty.conf` and
+      # `dots diff ~/.config/kitty/kitty.conf` all resolve to the same entry
+      if [[ $path == *"$want"* || "$(target_of "$path")" == *"$want"* ]]; then
+        printf '%s\t%s\n' "$mode" "$path"; matched=1; break
+      fi
+    done
+  done < <(manifest)
+  (( matched )) || die "no manifest entry matches: $*"
+}
+
+# ── commands ──────────────────────────────────────────────────────────────────
+
+cmd_status() {
+  local mode path drifted=0 broken=0 ok=0
+  local -a rows=()
+  while IFS=$'\t' read -r mode path; do
+    inspect "$mode" "$path"
+    case $STATE in
+      OK) (( ++ok )); [[ -n ${VERBOSE:-} ]] || continue ;;
+      DRIFT) (( ++drifted )) ;;
+      *) (( ++broken )) ;;
+    esac
+    local color
+    case $STATE in
+      OK)        color=$G ;;
+      DRIFT)     color=$Y ;;
+      MISSING|UNLINKED) color=$Y ;;
+      *)         color=$R ;;
+    esac
+    rows+=("$(printf '  %s%-9s%s %-6s %-52s %s' "$color" "$STATE" "$N" "$mode" "$path" "$NOTE")")
+  done < <(select_entries "$@")
+
+  (( ${#rows[@]} )) && printf '%s\n' "${rows[@]}"
+
+  # link entries can't drift, but their CONTENT changes still need committing.
+  local dirty
+  dirty=$(cd "$REPO" && git status --porcelain -- home system 2>/dev/null | wc -l)
+
+  echo
+  printf '  %s%d in sync%s' "$G" "$ok" "$N"
+  (( drifted )) && printf ' · %s%d drifted%s' "$Y" "$drifted" "$N"
+  (( broken ))  && printf ' · %s%d need attention%s' "$R" "$broken" "$N"
+  (( dirty ))   && printf ' · %s%d uncommitted%s %s(git status)%s' "$B" "$dirty" "$N" "$DIM" "$N"
+  echo
+  (( drifted || broken )) && return 1
+  return 0
+}
+
+cmd_link() {
+  local mode path src dst n=0
+  while IFS=$'\t' read -r mode path; do
+    [[ $mode == link ]] || continue
+    src="$REPO/$path"; dst="$(target_of "$path")"
+    [[ -e $src ]] || { warn "skip (not in repo): $path"; continue; }
+    inspect "$mode" "$path"
+    [[ $STATE == OK ]] && continue
+
+    if [[ -n ${DRY:-} ]]; then
+      printf '  would link  %s\n' "$dst"; continue
+    fi
+    # Anything already there is preserved, never deleted.
+    if [[ -e $dst || -L $dst ]]; then
+      mkdir -p "$BACKUP_DIR/$(dirname -- "$path")"
+      mv -- "$dst" "$BACKUP_DIR/$path"
+      printf '  %sbackup%s %s -> .backups/\n' "$DIM" "$N" "$dst"
+    fi
+    mkdir -p -- "$(dirname -- "$dst")"
+    ln -s -- "$src" "$dst"
+    printf '  %slink%s   %s\n' "$G" "$N" "$dst"
+    (( ++n ))
+  done < <(select_entries "$@")
+  [[ -d $BACKUP_DIR ]] && info "replaced files saved in ${BACKUP_DIR#"$REPO"/}"
+  info "$n symlink(s) created"
+}
+
+# live -> repo
+cmd_pull() {
+  local mode path src dst n=0
+  while IFS=$'\t' read -r mode path; do
+    [[ $mode == link ]] && continue          # nothing to pull: it IS the repo
+    src="$REPO/$path"; dst="$(target_of "$path")"
+    [[ -e $dst ]] || { warn "skip (no live file): $path"; continue; }
+    inspect "$mode" "$path"; [[ $STATE == DRIFT || $STATE == NOREPO ]] || continue
+    if [[ -n ${DRY:-} ]]; then printf '  would pull  %s\n' "$path"; continue; fi
+    mkdir -p -- "$(dirname -- "$src")"
+    cp -a -- "$dst" "$src"
+    printf '  %spull%s   %s %s(live -> repo)%s\n' "$G" "$N" "$path" "$DIM" "$N"
+    (( ++n ))
+  done < <(select_entries "$@")
+  info "$n file(s) pulled into the repo — review with: git diff"
+}
+
+# repo -> live
+cmd_push() {
+  local mode path src dst n=0 need_grub=0 need_initramfs=0
+  while IFS=$'\t' read -r mode path; do
+    [[ $mode == link ]] && continue
+    src="$REPO/$path"; dst="$(target_of "$path")"
+    [[ -e $src ]] || { warn "skip (not in repo): $path"; continue; }
+    inspect "$mode" "$path"; [[ $STATE == DRIFT || $STATE == MISSING ]] || continue
+    if [[ -n ${DRY:-} ]]; then printf '  would push  %s -> %s\n' "$path" "$dst"; continue; fi
+
+    if [[ $mode == root ]]; then
+      # NEVER `cp -a` into /etc: that carries the REPO file's ownership across,
+      # leaving a user-writable file that root acts on at boot — local privilege
+      # escalation. Install explicitly, preserving the mode the live file had.
+      local owner=root:root perm=644
+      if [[ -e $dst ]]; then
+        owner="$(stat -c '%U:%G' -- "$dst")"
+        perm="$(stat -c '%a' -- "$dst")"
+        # Keep the rollback copy in the repo's .backups, NOT next to the live
+        # file: a stray sibling in /etc/modprobe.d or /etc/*.d gets picked up by
+        # globs and confuses both tools and humans.
+        mkdir -p "$BACKUP_DIR/$(dirname -- "$path")"
+        sudo cp -a -- "$dst" "$BACKUP_DIR/$path"
+        sudo chown "$(id -un):$(id -gn)" "$BACKUP_DIR/$path"
+      fi
+      sudo install -D -o "${owner%%:*}" -g "${owner##*:}" -m "$perm" -- "$src" "$dst"
+      case "$path" in
+        */default/grub)   need_grub=1 ;;
+        */mkinitcpio.conf|*/modprobe.d/*) need_initramfs=1 ;;
+      esac
+    else
+      mkdir -p -- "$(dirname -- "$dst")"
+      cp -a -- "$src" "$dst"
+    fi
+    printf '  %spush%s   %s %s(repo -> %s)%s\n' "$G" "$N" "$path" "$DIM" "$dst" "$N"
+    (( ++n ))
+  done < <(select_entries "$@")
+  info "$n file(s) pushed"
+  (( need_grub ))      && warn "grub changed — run: sudo grub-mkconfig -o /boot/grub/grub.cfg"
+  (( need_initramfs )) && warn "initramfs inputs changed — run: sudo mkinitcpio -P"
+  return 0
+}
+
+cmd_diff() {
+  local mode path src dst
+  while IFS=$'\t' read -r mode path; do
+    src="$REPO/$path"; dst="$(target_of "$path")"
+    [[ -e $src && -e $dst ]] || continue
+    inspect "$mode" "$path"; [[ $STATE == DRIFT ]] || continue
+    printf '%s─── %s %s(repo)%s vs %s %s(live)%s\n' "$BOLD" "$path" "$DIM" "$N$BOLD" "$dst" "$DIM" "$N"
+    diff -u --color=always -- "$src" "$dst" || true
+    echo
+  done < <(select_entries "$@")
+}
+
+# Bring a live file under management.
+cmd_adopt() {
+  (( $# >= 1 )) || die "usage: dots adopt <live-path> [link|copy]"
+  local live mode=${2:-link} rel path
+  live="$(readlink -m -- "$1")"
+  [[ -e $live ]] || die "no such file: $1"
+  case "$live" in
+    "$HOME"/*) rel="${live#"$HOME"/}"; path="home/$rel" ;;
+    /etc/*)    path="system${live}"; mode=root ;;
+    *) die "can only adopt paths under \$HOME or /etc" ;;
+  esac
+  grep -qE "^[[:space:]]*[a-z]+[[:space:]]+${path//\//\\/}[[:space:]]*$" "$MANIFEST" \
+    && die "already in the manifest: $path"
+
+  mkdir -p -- "$REPO/$(dirname -- "$path")"
+  cp -a -- "$live" "$REPO/$path"
+  printf '%s\t%s\n' "$mode" "$path" | awk '{printf "%-7s %s\n", $1, $2}' >> "$MANIFEST"
+  info "copied into repo and appended to dots.conf: $mode $path"
+  [[ $mode == link ]] && info "now run: dots link $path"
+  return 0
+}
+
+# Environment sanity checks — the things that silently half-work.
+cmd_doctor() {
+  local fail=0 warnings=0
+  chk()  { printf '  %s✓%s %s\n' "$G" "$N" "$1"; }
+  bad()  { printf '  %s✗%s %s\n' "$R" "$N" "$1"; fail=1; }
+  soft() { printf '  %s!%s %s\n' "$Y" "$N" "$1"; (( ++warnings )); }
+
+  info "session"
+  if [[ -x $HOME/.local/bin/start-wayfire ]]; then chk "start-wayfire present and executable"
+  else bad "~/.local/bin/start-wayfire missing or not executable — .zprofile execs it on tty1 login"; fi
+  if grep -q 'start-wayfire' "$HOME/.zprofile" 2>/dev/null; then chk ".zprofile launches the wrapper (not bare wayfire)"
+  else soft ".zprofile does not use start-wayfire — session env vars will not be set"; fi
+
+  info "wayfire config"
+  local wf="$HOME/.config/wayfire.ini"
+  if [[ -e $wf ]]; then
+    if python3 - "$wf" <<'PY'
+import configparser, sys
+c = configparser.ConfigParser(strict=False, inline_comment_prefixes=None)
+c.read(sys.argv[1])
+sys.exit(0)
+PY
+    then chk "wayfire.ini parses"; else bad "wayfire.ini does not parse"; fi
+    # Both outputs statically off = a session with no visible screen.
+    if awk '/^\[output:/{o=$0} /^mode *= *off/{print o}' "$wf" | grep -q 'eDP-1' \
+       && awk '/^\[output:/{o=$0} /^mode *= *off/{print o}' "$wf" | grep -qE 'DP-3|HDMI'; then
+      bad "every output has 'mode = off' — that login would show no picture"
+    else chk "at least one output is enabled"; fi
+    # Every helper script wayfire shells out to must actually exist.
+    # Normalise ~ and $HOME to real paths BEFORE deduplicating, otherwise the
+    # same script listed as ~/x and "$HOME"/x gets reported twice.
+    while read -r s; do
+      [[ -e $s ]] && chk "referenced script exists: ${s/#"$HOME"/\~}" \
+                  || bad "wayfire.ini references a missing script: $s"
+    done < <(grep -oE '(~|\$HOME|"\$HOME")[^ "'"'"']*\.(sh|py)' "$wf" \
+               | tr -d '"' \
+               | sed -e "s|^~|$HOME|" -e "s|^\$HOME|$HOME|" \
+               | sort -u)
+
+    # The IPC scripts import python-wayfire; without it they die at startup and
+    # the only symptom is that inactive windows stop dimming.
+    if compgen -G "$HOME/.config/ipc-scripts/*.py" >/dev/null; then
+      if python3 -c 'from wayfire import WayfireSocket' 2>/dev/null; then
+        chk "python-wayfire importable (ipc-scripts depend on it)"
+      else
+        bad "~/.config/ipc-scripts/*.py need the python-wayfire module — pacman -S python-wayfire"
+      fi
+    fi
+
+    # Every keybinding that runs a plain command must resolve to a real binary.
+    # Values wrapped in `sh -c` are skipped: their payload is a script path,
+    # already covered above, and its arguments are not commands.
+    local missing_cmds=()
+    while IFS= read -r line; do
+      local key val bin
+      key="${line%%=*}"; key="${key#command_}"; key="${key%% *}"
+      val="${line#*=}"; val="${val# }"
+      [[ $val == sh\ * || $val == *'$HOME'* || $val == '~'* || $val == /* ]] && continue
+      bin="${val%% *}"
+      [[ -z $bin ]] && continue
+      command -v "$bin" >/dev/null 2>&1 || missing_cmds+=("$key -> $bin")
+    done < <(grep -E '^command_[a-z_]+ *=' "$wf")
+    if (( ${#missing_cmds[@]} )); then
+      local m; for m in "${missing_cmds[@]}"; do bad "keybinding runs a command that is not installed: $m"; done
+    else chk "every keybinding command resolves to an installed binary"; fi
+  else bad "no ~/.config/wayfire.ini"; fi
+
+  info "compositor"
+  # Wayfire here is a source build in /usr/local, not the packaged one. Both can
+  # be installed at once, and then which compositor you get depends on PATH.
+  local wfbin wfprefix
+  wfbin="$(command -v wayfire 2>/dev/null || true)"
+  if [[ -z $wfbin ]]; then bad "no wayfire on PATH"
+  else
+    chk "wayfire on PATH: $wfbin"
+    wfprefix="$(dirname "$(dirname "$wfbin")")"
+    if pacman -Qq wayfire &>/dev/null && [[ $wfbin == /usr/local/* ]]; then
+      soft "the packaged 'wayfire' is installed too but unused — if /usr/local/bin ever leaves PATH you get a compositor that cannot load this config"
+    fi
+    # Every plugin named in wayfire.ini must exist in the prefix that is running.
+    local plugdir="$wfprefix/lib/wayfire" missing=()
+    if [[ -d $plugdir ]]; then
+      local p
+      while read -r p; do
+        [[ -z $p ]] && continue
+        [[ -e $plugdir/lib$p.so ]] || missing+=("$p")
+      done < <(awk '/^plugins *=/{f=1} f{gsub(/[\\=]/," "); sub(/^ *plugins */,""); print} f&&!/\\$/{f=0}' \
+                 "$HOME/.config/wayfire.ini" 2>/dev/null | tr ' ' '\n' | grep -vE '^(plugins)?$' | sort -u)
+      if (( ${#missing[@]} )); then
+        local m; for m in "${missing[@]}"; do bad "wayfire.ini enables plugin '$m' but $plugdir/lib$m.so does not exist"; done
+      else chk "every plugin in wayfire.ini exists in $plugdir"; fi
+    else soft "no plugin directory at $plugdir"; fi
+    # A -O0 debug build as the daily compositor is a real, and easy to forget, cost.
+    if [[ -f $HOME/Documents/Projects/wayfire/build/meson-info/intro-buildoptions.json ]]; then
+      local bt
+      bt=$(python3 -c "import json,sys;print({o['name']:o['value'] for o in json.load(open(sys.argv[1]))}.get('buildtype',''))" \
+            "$HOME/Documents/Projects/wayfire/build/meson-info/intro-buildoptions.json" 2>/dev/null || true)
+      [[ $bt == debug ]] && soft "wayfire build tree is configured buildtype=debug (-O0) — rebuild with scripts/build-wayfire.sh for a release build" \
+                         || chk "wayfire build tree is buildtype=${bt:-unknown}"
+    fi
+  fi
+
+  info "graphics (hybrid Intel + NVIDIA)"
+  if [[ -r /proc/cmdline ]] && grep -q 'nvidia_drm.modeset=1' /proc/cmdline; then
+    chk "nvidia_drm.modeset=1 on the running kernel"
+  else soft "nvidia_drm.modeset=1 not on the running cmdline — Wayland on NVIDIA needs it"; fi
+  if [[ $(grep -c '^HOOKS=' /etc/mkinitcpio.conf 2>/dev/null || echo 0) -gt 1 ]]; then
+    bad "/etc/mkinitcpio.conf defines HOOKS= more than once — only the last line takes effect"
+  else chk "mkinitcpio.conf has a single HOOKS= line"; fi
+  local dup
+  # Only *.conf (modprobe ignores anything else) and only real `options` lines —
+  # matching comment text reported an option documented in prose as a duplicate.
+  dup=$(grep -h '^[[:space:]]*options[[:space:]]' /etc/modprobe.d/*.conf 2>/dev/null \
+        | grep -oE 'NVreg_[A-Za-z]+' | sort | uniq -d | tr '\n' ' ')
+  if [[ -n ${dup// } ]]; then soft "NVreg option(s) set in more than one modprobe.d file: $dup"
+  else chk "no duplicated NVreg options in /etc/modprobe.d"; fi
+
+  info "/etc ownership"
+  local badown=0 mode path dst
+  while IFS=$'\t' read -r mode path; do
+    [[ $mode == root ]] || continue
+    dst="$(target_of "$path")"
+    [[ -e $dst ]] || continue
+    if [[ "$(stat -c '%U' -- "$dst")" != root ]]; then
+      bad "$dst is owned by $(stat -c '%U' -- "$dst"), not root — root acts on it at boot; fix: sudo chown root:root $dst"
+      badown=1
+    fi
+  done < <(manifest)
+  (( badown )) || chk "every managed /etc file is root-owned"
+
+  info "audio"
+  if command -v pactl >/dev/null && pactl info >/dev/null 2>&1; then chk "PipeWire/pulse reachable"
+  else soft "pactl cannot reach a sound server"; fi
+  if [[ -d $HOME/.config/pipewire ]] && find "$HOME/.config/pipewire" -maxdepth 1 -name '*.conf' | grep -q .; then
+    soft "top-level *.conf in ~/.config/pipewire shadows the package defaults and goes stale on update — prefer *.conf.d/ drop-ins"
+  else chk "PipeWire configured via drop-ins only"; fi
+
+  info "theming"
+  local cur_gtk cur_wf
+  cur_gtk=$(sed -n 's/^gtk-cursor-theme-name=//p' "$HOME/.config/gtk-3.0/settings.ini" 2>/dev/null)
+  cur_wf=$(sed -n 's/^ *cursor_theme *= *//p' "$HOME/.config/wayfire.ini" 2>/dev/null | head -1)
+  if [[ -n $cur_gtk && -n $cur_wf && $cur_gtk != "$cur_wf" ]]; then
+    soft "cursor theme differs: GTK=$cur_gtk, wayfire=$cur_wf — the pointer changes colour between windows"
+  elif [[ -n $cur_wf ]]; then chk "cursor theme consistent ($cur_wf)"; fi
+  if [[ -n $cur_wf && ! -d $HOME/.icons/$cur_wf && ! -d /usr/share/icons/$cur_wf ]]; then
+    bad "cursor theme '$cur_wf' is not installed — run scripts/install-assets.sh"
+  fi
+
+  echo
+  (( fail )) && { printf '  %sdoctor found problems%s\n' "$R" "$N"; return 1; }
+  (( warnings )) && { printf '  %sok, with %d warning(s)%s\n' "$Y" "$warnings" "$N"; return 0; }
+  printf '  %sall checks passed%s\n' "$G" "$N"
+}
+
+# Live config files that look worth tracking but are not in the manifest.
+cmd_scan() {
+  local -a known=()
+  while IFS=$'\t' read -r _ path; do known+=("$(target_of "$path")"); done < <(manifest)
+  local n=0
+  while read -r f; do
+    local k
+    for k in "${known[@]}"; do [[ $f == "$k" || $f == "$k"/* ]] && continue 2; done
+    printf '  %s\n' "${f/#"$HOME"/\~}"; (( ++n ))
+  done < <(
+    find "$HOME/.config" -maxdepth 2 -type f \
+         \( -name '*.conf' -o -name '*.ini' -o -name 'config' -o -name '*.rasi' -o -name '*.css' \) \
+         -not -path '*/Code/*' -not -path '*/JetBrains/*' -not -path '*/BraveSoftware/*' \
+         -not -path '*/kilo/*' -not -path '*/Antigravity/*' -not -path '*/ghidra/*' \
+         -not -path '*/obs-studio/*' -not -path '*/BetterDiscord/*' -not -path '*/go/*' \
+         2>/dev/null | sort
+  )
+  (( n )) && info "$n untracked candidate(s) — adopt one with: dots adopt <path> [link|copy]" \
+          || info "nothing untracked worth adopting"
+}
+
+cmd_help() {
+  cat <<'H'
+dots — deploy and drift-track this dotfiles repo
+
+  dots status [path…]     what is deployed, what drifted, what needs attention
+  dots link   [path…]     create the symlinks (backs up anything already there)
+  dots pull   [path…]     copy-tracked files: live  -> repo
+  dots push   [path…]     copy-tracked files: repo  -> live  (sudo for /etc)
+  dots diff   [path…]     unified diff for everything that drifted
+  dots adopt  <path> [link|copy]
+                          bring a new live file into the repo and the manifest
+  dots doctor             check the session, GPU, audio and theming wiring
+  dots scan               live config files that are not tracked yet
+  dots help               this text
+
+Flags
+  -n, --dry-run           show what link/pull/push would do, change nothing
+  -v, --verbose           status: also list the in-sync entries
+
+Notes
+  link entries cannot drift — $HOME points into the repo, so `git status` is
+  their report. Only copy/root entries can go stale, and those are what
+  `dots status` diffs for you.
+
+  Exit code is 1 when anything drifted or needs attention, so this works in a
+  prompt or a pre-commit hook:  dots status >/dev/null || echo "dots drifted"
+H
+}
+
+# ── dispatch ──────────────────────────────────────────────────────────────────
+CMD=""
+ARGS=()
+while (( $# )); do
+  case $1 in
+    -n|--dry-run) DRY=1 ;;
+    -v|--verbose) VERBOSE=1 ;;
+    -h|--help)    CMD=help ;;
+    -*) die "unknown flag: $1" ;;
+    *)  if [[ -z $CMD ]]; then CMD=$1; else ARGS+=("$1"); fi ;;
+  esac
+  shift
+done
+
+case "${CMD:-status}" in
+  status|st) cmd_status "${ARGS[@]+"${ARGS[@]}"}" ;;
+  link)      cmd_link   "${ARGS[@]+"${ARGS[@]}"}" ;;
+  pull)      cmd_pull   "${ARGS[@]+"${ARGS[@]}"}" ;;
+  push)      cmd_push   "${ARGS[@]+"${ARGS[@]}"}" ;;
+  diff)      cmd_diff   "${ARGS[@]+"${ARGS[@]}"}" ;;
+  adopt)     cmd_adopt  "${ARGS[@]+"${ARGS[@]}"}" ;;
+  doctor)    cmd_doctor ;;
+  scan)      cmd_scan ;;
+  help)      cmd_help ;;
+  *) die "unknown command: $CMD (try: dots help)" ;;
+esac

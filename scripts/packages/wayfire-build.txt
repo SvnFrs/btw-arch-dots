@@ -1,0 +1,54 @@
+# Build dependencies for compiling Wayfire from source.
+#
+# Wayfire on this machine is NOT the packaged one — see docs/wayfire-build.md.
+# It is built from github.com/SvnFrs/wayfire (a personal fork carrying the
+# spread-overview plugin) and installed into /usr/local.
+#
+# Derived from the build tree's own meson dependency list, not guessed.
+
+# toolchain
+base-devel
+meson
+ninja
+cmake
+pkgconf
+git
+
+# wayland core
+wayland
+wayland-protocols
+libxkbcommon
+libinput
+libevdev
+seatd
+pixman
+libdrm
+mesa
+libglvnd
+vulkan-icd-loader
+
+# rendering / text
+cairo
+pango
+libjpeg-turbo
+libpng
+lcms2
+glm
+
+# display + output handling
+libdisplay-info
+libliftoff
+hwdata
+
+# xwayland
+xorg-xwayland
+libxcb
+xcb-util-wm
+xcb-util-errors
+xcb-util-renderutil
+
+# misc
+libxml2
+yyjson
+doctest                   # meson option `tests` is enabled in this build
+systemd-libs

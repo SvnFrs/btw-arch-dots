@@ -1,0 +1,26 @@
+# Hybrid Intel UHD (TigerLake-H) + NVIDIA RTX 3060 Mobile — Acer Predator PT516-51s.
+#
+# nvidia-open-dkms, not nvidia-dkms: the GA106 is Ampere, which the open kernel
+# modules fully support, and it is the variant NVIDIA now develops against.
+# It rebuilds against linux-zen automatically through DKMS.
+nvidia-open-dkms
+nvidia-utils
+lib32-nvidia-utils
+nvidia-prime              # provides prime-run; the `nvidia-run` alias in .zshrc does the same by hand
+nvidia-settings
+opencl-nvidia
+cuda
+
+# Intel side — drives eDP-1 and every DisplayPort output (see docs/hardware.md)
+mesa-utils
+lib32-vulkan-intel
+intel-gpu-tools
+
+# kernel headers for the DKMS build
+linux-zen
+linux-zen-headers
+linux-firmware
+
+# GPU mode switching + monitoring
+envycontrol
+nvtop

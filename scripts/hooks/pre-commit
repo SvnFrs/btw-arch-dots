@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Pre-commit hook for btw-arch-dots. Install with: ./scripts/hooks/install.sh
+#
+# Blocks a commit only when it would record something WRONG:
+#
+#   - a copy-tracked file whose live version is newer. Committing then stores a
+#     snapshot you have already superseded on the machine — silent data loss.
+#   - docs/keybindings.md out of step with wayfire.ini (it is generated).
+#   - a shell script that does not parse.
+#
+# It does NOT block on `root` entries where the repo is ahead of /etc: that is
+# the normal state between editing a system file and running `dots push`.
+set -euo pipefail
+REPO="$(git rev-parse --show-toplevel)"
+fail=0
+
+status="$(NO_COLOR=1 "$REPO/bin/dots" status 2>&1 || true)"
+
+stale="$(printf '%s\n' "$status" | awk '$1=="DRIFT" && $2=="copy" && /live is newer/')"
+if [[ -n $stale ]]; then
+  echo "pre-commit: the machine has newer versions of these copy-tracked files:" >&2
+  printf '%s\n' "$stale" | sed 's/^/  /' >&2
+  echo "  committing now would store a stale snapshot. Run:  dots pull" >&2
+  fail=1
+fi
+
+pending="$(printf '%s\n' "$status" | awk '$1=="DRIFT" && $2=="root"')"
+if [[ -n $pending ]]; then
+  echo "pre-commit: note — system files are ahead of /etc and not applied yet:" >&2
+  printf '%s\n' "$pending" | sed 's/^/  /' >&2
+  echo "  (not blocking; apply with: dots push system)" >&2
+fi
+
+if ! "$REPO/scripts/gen-keybindings.sh" --check >/dev/null 2>&1; then
+  echo "pre-commit: docs/keybindings.md is stale — run:  ./scripts/gen-keybindings.sh" >&2
+  fail=1
+fi
+
+while IFS= read -r f; do
+  [[ -f $REPO/$f ]] || continue
+  if ! bash -n "$REPO/$f" 2>/dev/null; then
+    echo "pre-commit: syntax error in $f" >&2
+    fail=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$|^bin/dots$' || true)
+
+(( fail )) && { echo "pre-commit: commit blocked (use --no-verify to override)" >&2; exit 1; }
+exit 0
