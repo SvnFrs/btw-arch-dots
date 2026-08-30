@@ -88,6 +88,12 @@ xdg_dir() {                       # $1 = ten XDG, $2 = duong dan du phong
 PIC="$(xdg_dir PICTURES Pictures)/Screenshots"
 VID="$(xdg_dir VIDEOS Videos)/Recordings"
 
+# Theme cho rofi. `rofi -dmenu` tran KHONG dung theme ma launcher cua ban dat —
+# launcher truyen -theme rieng nen config do khong ap vao day, va rofi roi ve
+# theme built-in (nen kem, khong bo goc — nhin nhu dmenu chua rice).
+# Tro thang vao file theme. Doi sang theme co san cua ban thi sua dong nay.
+ROFI_THEME="${ROFI_THEME:-$HOME/.config/rofi/config/clipboard.rasi}"
+
 # notify-send khong duoc phep lam chet script neu daemon chua san sang
 notify() { notify-send -a swaync "$1" "$2" || true; }
 
@@ -259,14 +265,16 @@ $cal_out"
   # bam Esc thi rofi xuat chuoi rong, decode tra ve rong, va wl-copy XOA SACH
   # clipboard hien tai. Bat va thoat som.
   clip)
-      sel=$(cliphist list | rofi -dmenu -display-columns 2 -p "clipboard") || exit 0
+      sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "clipboard" \
+              -theme "$ROFI_THEME") || exit 0
       [[ -n $sel ]] || { echo "rofi: nguoi dung huy"; exit 0; }
       printf '%s' "$sel" | cliphist decode | wl-copy
       ;;
 
   # --- xoa mot muc khoi lich su ---
   clip-del)
-      sel=$(cliphist list | rofi -dmenu -display-columns 2 -p "xoa khoi clipboard") || exit 0
+      sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "xoa" \
+              -mesg "Chon muc de XOA khoi lich su" -theme "$ROFI_THEME") || exit 0
       [[ -n $sel ]] || exit 0
       printf '%s' "$sel" | cliphist delete
       ;;

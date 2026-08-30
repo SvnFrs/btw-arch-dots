@@ -1,0 +1,136 @@
+/* ~/.config/rofi/clipboard.rasi
+ *
+ * Theme cho clipboard picker (cliphist). Catppuccin Mocha — cung bang mau voi
+ * ~/.config/swaync/style.css nen panel va picker nhin cung mot bo.
+ *
+ * `@theme "/dev/null"` o dong dau XOA SACH theme mac dinh cua rofi truoc khi
+ * ap file nay. Thieu dong do thi rofi merge voi default va ban duoc mot mo hon
+ * hop nua cu nua moi — day chinh la ly do `rofi -dmenu` tran nhin nhu dmenu.
+ *
+ * Dung:  rofi -dmenu -theme ~/.config/rofi/clipboard.rasi
+ */
+
+@theme "/dev/null"
+
+* {
+    base      : #1e1e2e;
+    mantle    : #181825;
+    crust     : #11111b;
+    surface0  : #313244;
+    surface1  : #45475a;
+    surface2  : #585b70;
+    text      : #cdd6f4;
+    subtext0  : #a6adc8;
+    mauve     : #cba6f7;
+    blue      : #89b4fa;
+    red       : #f38ba8;
+
+    background-color : transparent;
+    text-color       : @text;
+    font             : "JetBrainsMono Nerd Font 11";
+    margin           : 0;
+    padding          : 0;
+    spacing          : 0;
+}
+
+window {
+    location         : center;
+    anchor           : center;
+    width            : 46%;
+    border           : 1px;
+    border-color     : @surface1;
+    border-radius    : 16px;
+    background-color : @base;
+}
+
+mainbox {
+    padding  : 12px;
+    spacing  : 10px;
+    children : [ inputbar, message, listview ];
+}
+
+/* --- o tim kiem --- */
+inputbar {
+    background-color : @mantle;
+    border           : 1px;
+    border-color     : @surface0;
+    border-radius    : 12px;
+    padding          : 10px 14px;
+    spacing          : 10px;
+    children         : [ prompt, entry ];
+}
+
+prompt {
+    text-color  : @mauve;
+    font        : "JetBrainsMono Nerd Font Bold 11";
+}
+
+entry {
+    placeholder       : "loc...";
+    placeholder-color : @subtext0;
+    cursor            : text;
+}
+
+/* --- dong nhac (chi hien khi co -mesg) --- */
+message {
+    background-color : @mantle;
+    border           : 1px;
+    border-color     : @surface0;
+    border-radius    : 12px;
+    padding          : 8px 14px;
+}
+
+textbox {
+    text-color : @subtext0;
+}
+
+/* --- danh sach --- */
+listview {
+    lines         : 12;
+    columns       : 1;
+    spacing       : 4px;
+    scrollbar     : true;
+    fixed-height  : false;
+    dynamic       : true;
+    cycle         : true;
+}
+
+scrollbar {
+    handle-color  : @surface2;
+    handle-width  : 4px;
+    border-radius : 8px;
+    background-color : @mantle;
+}
+
+/* --- tung dong --- */
+element {
+    padding       : 8px 12px;
+    border-radius : 10px;
+    spacing       : 10px;
+    cursor        : pointer;
+}
+
+element normal normal   { text-color : @text; }
+element normal urgent   { text-color : @red; }
+element alternate normal{ text-color : @text; }
+
+element selected normal {
+    background-color : @mauve;
+    text-color       : @crust;
+}
+
+element selected urgent {
+    background-color : @red;
+    text-color       : @crust;
+}
+
+element-text {
+    background-color : transparent;
+    text-color       : inherit;
+    vertical-align   : 0.5;
+    /* `highlight` KHONG nhan @reference — parser rofi bao
+       "unexpected Reference, expecting property close (';')".
+       Thuoc tinh nay chi an mau LITERAL. Phai viet hex truc tiep.
+       (#89b4fa = blue trong bang mau o dau file) */
+    highlight        : bold #89b4fa;
+}
