@@ -347,6 +347,7 @@ the installed default has them, override those first and style nodes only where 
 | `.notification-group` *(added 2026-09-29, S6)* | container `background: transparent`; only the cards inside carry the cell. Group headers `ink-muted`, 12px. The group close button is the glass close button. Collapsed-stack cards keep the cell fill (never `pill` over `cell`). `.notification-group.critical` adds **no** `danger-soft` to the container |
 | `.notification-background` / `.notification` | cell in the centre; as a toast: glass panel (same fill, sheen, grain, rim, shadow as `.control-center`), radius 26, padding 14 |
 | `.notification-background:hover` (centre) | `background: {{pill}}` — replaces the cell fill (§3.4); 180ms `ease-out-expo` |
+| *I3 implementation notes (2026-09-29)* | The cell goes on `.notification` (the visible card, where `.critical` also lives), so hover, focus and critical all **replace** one node's fill; `.notification-background` is only the 8px gap. The default's inner `.notification-default-action:hover` and the row's `:focus` fill (`--noti-bg-focus`) are set transparent, so no second pill stacks on the card. Other choices within §5's intent: `--mpris-album-art-shadow: none` (no drop shadow on glass); the empty-list placeholder is `ink-muted` at full opacity (the default's opacity .5 would drop below 4.5:1); keyboard focus gets a 2px `accent` outline (DP8). Floating toasts keep swaync's default look until I4 |
 | `.summary` | Demi Bold 14px `ink` · `.body` Regular 14px `ink-muted` · `.time` 12px `ink-muted` |
 | `.close-button` | glass button 24px circle; `opacity: 0` → `1` on `.notification-row:hover` over 180ms |
 | `.critical` (verify whether it sits on `.notification` or `.notification-background`) | `background: {{danger-soft}}` over the glass/cell fill it replaces; `box-shadow: inset 0 0 0 1px {{danger-rim}}`; summary stays `ink`. GTK CSS has no generated content, so no glyph can be added — the app's own icon and the summary words carry the status |
@@ -498,11 +499,42 @@ Placeholders are examples, never labels. Keep each existing string's language.
   `75deg` = top-left→bottom-right (= CSS 165°), `165deg` = right→left (= CSS 255°).
 - GTK4/swaync: `url("assets/…")` resolves relative to `style.css`. If not, embed the PNGs as
   `data:image/png;base64,…` (GTK has a CSS data-URL loader) — never an absolute `/home/…` path.
+  **RESOLVED 2026-09-29 (I3):** it resolves. `.control-center` has `background-color: transparent`,
+  so its fill can only come from `glass-grain.png`, and the panel renders filled (screenshot).
+  `switch-on.png` has not been seen yet (DND was left off).
 - GTK4/swaync: the enter keyframes replay on every open (today's `style.css` notes it may only run
   the first time if swaync reuses the widget). If it runs once, keep it anyway — harmless.
+  **RESOLVED 2026-09-29 (S4):** they replay. The selector is `.blank-window.open .control-center`.
+  In v0.12.6 the control-centre window itself has node `blankwindow`, class `blank-window`
+  (`control_center.blp`), gets `open` on every show (`controlCenter.vala:392`) and holds
+  `.control-center`. The per-output click-catcher `BlankWindow` shares node and class but never gets
+  `open` and has no children (`blankWindow.vala:10, 83`). A `wf-recorder` of the centre opened
+  twice shows a ~10–12-frame ramp on **both** opens. The GTK Inspector was not used: no pointer or
+  keyboard injection tool is installed, so it cannot be navigated from here.
 - `[animate] fade_enabled_for = type is "overlay"` actually matches rofi and swaync surfaces.
+  **RESOLVED 2026-09-29:** `is` is valid (`condition_parser.cpp:108`, same as `equals`). rofi is
+  `type "overlay"` (now zoomed instead, DP7). The swaync **control centre** is `app-id
+  "swaync-control-center"`, `type "panel"`, `layer "top"`, 3440×1440 (IPC `list_views` while open),
+  so the fade does **not** match it. Its enter is the CSS keyframes alone, and it closes instantly
+  (one frame in the recording). Its layer was not changed.
 - The installed swaync's class for critical notifications and whether its default uses CSS custom
-  properties (§5).
+  properties (§5). **RESOLVED 2026-09-29 (I3):**
+  - S1: the default is written against custom properties in `:root` (`--cc-bg`, `--noti-bg` as an
+    RGB triplet + `--noti-bg-alpha`, `--noti-border-color`, `--border-radius`,
+    `--notification-shadow`, `--text-color`, `--font-size-*`, `--noti-close-bg*`, `--mpris-*`). Its
+    rules read the misspelt `--hover-tranistion`. swaync 0.12.6 loads the packaged CSS and then the
+    user CSS at the same priority (`functions.vala:94-122`), so the template overrides the
+    properties first and nodes where they fall short (the triplet cannot carry a token).
+  - S2: the window nodes are `notificationwindow`, `blankwindow`, not `window`.
+  - S5: `.critical` sits on `.notification` (`.notification-row .notification-background
+    .notification.critical`); groups add `.notification-group.critical`.
+  - DND: the switch is a direct child of `.widget-dnd` (`dnd.vala:48`, extra class
+    `.control-center-dnd`), so `.widget-dnd > switch` matches.
+  - §8.4 run: zero CSS parser lines and zero `Gtk-WARNING`. There were two `CRITICAL` assertions
+    when toggling the centre (`gdk_surface_get_device_position`, `_gtk_widget_find_at_coords`), but
+    they are pre-existing: 12 occurrences in the journal under the old `style.css`. There were also
+    two environment warnings (Adwaita: `gtk-application-prefer-dark-theme`; Gdk: no
+    `portal.Inhibit`). The GTK 4.22 parser, run offline on the generated file, reports no errors.
 - **RESOLVED 2026-09-29 (S3):** `control-center-margin-*` are widget margins inside a surface that
   covers the output, so they do not clip the panel shadow. Evidence: swaync v0.12.6
   `controlCenter.vala:313-316` and the `layer-shell-cover-screen` default (true) in

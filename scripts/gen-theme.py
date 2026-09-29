@@ -30,6 +30,7 @@ TEMPLATES = os.path.join(REPO, "theme", "templates")
 # `link` entries in dots.conf, so writing them changes the running desktop.
 OUTPUTS = {
     "rofi/launcher.rasi.in": "home/.config/rofi/config/launcher.rasi",
+    "swaync/style.css.in": "home/.config/swaync/style.css",
 }
 ASSET_DIR = "home/.config/swaync/assets"
 

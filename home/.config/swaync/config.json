@@ -34,13 +34,13 @@
     "title": {
       "text": "Notifications",
       "clear-all-button": true,
-      "button-text": "Clear All"
+      "button-text": "Clear all"
     },
     "dnd": {
-      "text": "Do Not Disturb"
+      "text": "Do not disturb"
     },
     "volume": {
-      "label": "Volume",
+      "label": "",
       "show-per-app": false
     },
     "mpris": {
