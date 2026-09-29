@@ -77,10 +77,12 @@ is the token's RGB with alpha × f.
 
 | Token | Value | Derivation | Used for |
 |---|---|---|---|
-| `glass-desktop` | `#232334f7` | `glass-fill-strong` RGB, alpha .969 (DP1) | every panel |
+| `glass-desktop` | ~~`#232334f7`~~ `#1e1e2ef7` | ~~`glass-fill-strong` RGB~~ `ground` RGB, alpha .969 (DP1; *changed 2026-09-29*) | every panel |
 | `tint` | `#f5e0dc07` | `glass-edge` ×.18 | 165° top-left sheen, stop 0 |
 | `tint-end` | `#f5e0dc00` | `glass-edge` RGB, alpha 0 | sheen end stop at 42% (never `transparent`: avoids a dark fringe in non-premultiplied gradients) |
-| `tint-over-glass` | `#292939f7` | `tint` over `glass-desktop` | rofi's single-gradient panel fill (§4.1) |
+| `tint-over-glass` | ~~`#292939f7`~~ `#242433f7` | `tint` over `glass-desktop` | first stop of `rofi-panel-gradient` |
+| `rofi-panel-gradient` | `linear-gradient(75deg, #242433f7, … 13 stops …, #1e1e2ef7)` | the 165° sheen in rofi's dialect (DP9): `tint-over-glass` ramping to `glass-desktop` over stops 0–5 (5/12 = 41.7%), then flat — *added 2026-09-29* | rofi panel fill (§4.1) |
+| `rofi-core-gradient` | `linear-gradient(25deg, #fab387, #f5c2e7)` | `core-gradient` in rofi's dialect (DP9) — *added 2026-09-29* | rofi chip |
 | `rim` | `#45475a8c` | `line` ×.55 | 1px panel ring (Enhalation menu ring) |
 | `pill` | `#cdd6f417` | `ink` ×.09 (Enhalation `--enh-pill`, Mocha) | selected/hovered row, glass buttons |
 | `pill-hover` | `#cdd6f421` | `ink` ×.13 | glass button hover |
@@ -94,6 +96,14 @@ is the token's RGB with alpha × f.
 | `thumb-shadow` | `#11111b59` | `on-halo` ×.35 | knob drop shadow (`0 2px 6px`) |
 | `danger-rim` | `#f38ba866` | `danger` ×.40 | 1px ring on critical notifications |
 | `core-gradient` | `linear-gradient(115deg, #fab387, #f5c2e7)` | Switch fill / core at rest | the warm core |
+| `art-scrim` | `#11111bcc` | `ground-deep` (crust), alpha `0xcc` — *added 2026-09-29 (S7)* | the layer between swaync's blurred album art and its text/buttons |
+
+*(S7, 2026-09-29)* `art-scrim` replaces the design system's crust ×.70 scrim, which fails over white
+album art: ink-muted 3.15, ink on pill 4.08. At `0xcc`, ink-muted is 4.57 and ink on pill is 5.69
+(oracle `contrast()`; surfaces `art` = `art-scrim` over white, `pill-on-art` = `pill` over `art`).
+The gate gained REQUIRED (art, ink), (art, ink-muted), (pill-on-art, ink) and FORBIDDEN
+(pill-on-art, ink-muted). `bake()` does not use it, so the §8.1 baked-image sha256s are unchanged
+(VERIFIED `--digest` after the change).
 
 Unchanged tokens used directly: `ink #cdd6f4`, `ink-muted #a6adc8`, `accent #cba6f7`,
 `spark #94e2d5`, `danger #f38ba8`, `danger-soft #f38ba81f`, `on-halo #11111b`, `thumb #9399b2`,
@@ -109,6 +119,12 @@ Unchanged tokens used directly: `ink #cdd6f4`, `ink-muted #a6adc8`, `accent #cba
 (`glass-desktop`). Contrast is measured against the worst case: the 165° sheen at its peak, over a
 **white** window and over `crust` (§2 table in `--contrast`). At the design system's own .922 the
 pill fails for `ink-muted` (4.07) and `danger` (3.91) over white; at .969 every used pair passes.
+
+*(changed 2026-09-29, Tyler's choice)* The panel colour is `ground`, Catppuccin base `#1e1e2e`,
+which is the colour the old rofi launcher used. It replaces `glass-fill-strong`'s `#232334` at the
+same alpha .969, so `glass-desktop` = `#1e1e2ef7`. It is one shared token, so swaync's panel and the
+baked `glass-grain.png` change with it (§8.1). The gate still passes and every minimum rose: glass
+6.07, pill 4.84, cell 5.52, danger-soft 4.89, well 3.48 (were 5.67, 4.52, 5.15, 4.58, 3.41).
 
 **DP2 — Type is Cartograph.** `CartographCF Nerd Font` replaces Geist, Geist Mono and Bricolage; its
 italic takes Instrument Serif's flourish role — **only** the chip label. *(corrected 2026-09-29: it
@@ -168,6 +184,15 @@ internal — no spring.
 - swaync: the Do-not-disturb switch **when on**. Nothing else in swaync is warm.
 - `clip-del` replaces the warm chip with a **danger** chip (destructive intent outranks the moment).
 
+**DP9 — rofi's gradient dialect** *(added 2026-09-29, option A; evidence in §10)*. rofi 2.0.0
+rejects stop positions (`0%`, `42%`, or `0.42`: "Failed to parse theme"), spaces colour-only stops
+evenly, and measures the angle from "to right", clockwise, so **rofi angle = CSS angle − 90°**.
+`enhalation_ref.py` therefore derives two rofi-only tokens (§2). `rofi-panel-gradient` is 75° with 13
+even stops that reach `glass-desktop` at 5/12 = 41.7% (standing in for 42%); the oracle computes the
+in-between stops. `rofi-core-gradient` is 25°. `core-gradient` (CSS, 115°) stays for swaync.
+Related rofi fix: Nerd v3 icons draw past their one-cell advance and rofi clips them at the
+textbox, so `textbox-glyph` gets `padding: 0 9px 0 0`.
+
 `accent` (mauve) = match highlights, volume fill, today in `cal`, focus. `spark` (teal) = exactly
 one thing: the focused window's row in the window switcher (rofi `active` state) — it carries over
 the teal the old switcher used for the wallpaper. Pink as an *accent* (the old launcher) is retired;
@@ -181,6 +206,12 @@ pink now lives inside the warm core. `danger` = urgent rows, critical notificati
   is 11pt, not display).
 - Status never relies on hue alone: urgent rows keep their title text; critical notifications keep
   their summary; `clip-del` shows the trash glyph **and** a word.
+- *(S7, 2026-09-29)* Over album art, text sits on `art-scrim`, and a glass button there is `pill`
+  over `art` (`pill-on-art`). That fails for `ink-muted` (3.70), so mpris button glyphs are `ink`,
+  never `ink-muted`.
+- *(S6, 2026-09-29)* A notification group's container has no fill; only its cards carry the cell.
+  A critical group gets no `danger-soft` on the container: the critical card inside already has
+  `danger-soft` and `danger-rim`, and stacking them breaks the first rule above.
 
 ## 4. rofi — NORMATIVE
 
@@ -201,7 +232,7 @@ configuration {
 window {
     width: <per menu>;  border: 1px;  border-radius: 26px;  border-color: {{rim}};
     background-color: transparent;
-    background-image: linear-gradient(165deg, {{tint-over-glass}} 0%, {{glass-desktop}} 42%, {{glass-desktop}} 100%);
+    background-image: {{rofi-panel-gradient}};   /* corrected 2026-09-29 (DP9); was linear-gradient(165deg, … 0%, … 42%, … 100%) */
     cursor: default;
 }
 mainbox {                                   /* lit top edge, standing in for inset 0 1px 0 glass-edge */
@@ -213,10 +244,11 @@ inputbar { spacing: 10px; children: [ "chip", "entry" ]; }
 chip {                                      /* custom box: the warm core */
     orientation: horizontal;  expand: false;  spacing: 8px;
     padding: 12px 16px;  border-radius: 10px;
-    background-image: {{core-gradient}};
+    background-image: {{rofi-core-gradient}};   /* corrected 2026-09-29 (DP9); was {{core-gradient}} */
     children: [ "textbox-glyph", "prompt" ];
 }
-textbox-glyph { str: "{{glyph.<menu>}}"; expand: false; text-color: {{on-halo}}; vertical-align: 0.5; }
+textbox-glyph { str: "{{glyph.<menu>}}"; expand: false; padding: 0 9px 0 0;   /* padding added 2026-09-29 (DP9) */
+                text-color: {{on-halo}}; vertical-align: 0.5; }
 prompt        { text-color: {{on-halo}}; font: "CartographCF Nerd Font Bold Italic 11"; vertical-align: 0.5; }
 entry {
     padding: 12px 16px;  border: 0 0 2px 0;  border-color: {{line-strong}};  border-radius: 10px;
@@ -236,7 +268,7 @@ element normal.active, element alternate.active  { text-color: {{spark}}; }
 element selected.active   { background-color: {{pill}}; border-color: {{pill-top}}; text-color: {{spark}}; }
 element-icon { size: 24px; cursor: inherit; }
 element-text { text-color: inherit; highlight: bold {{accent}}; vertical-align: 0.5; cursor: inherit; }
-element-text selected { font: "CartographCF Nerd Font Semi-Bold 11"; }   /* drop if rofi ignores it (§10) */
+/* element-text selected { font: … Semi-Bold 11; } — dropped 2026-09-29: rofi 2.0 ignores it (§10) */
 ```
 
 Radius nesting follows Enhalation's rule (outer − padding): 26 − 16 = 10 for chip, entry, rows.
@@ -297,7 +329,8 @@ the installed default has them, override those first and style nodes only where 
 | `.widget-dnd > switch slider` | `min-width: 22px; min-height: 22px; margin: 5px; border-radius: 9999px; background-image: radial-gradient(circle at 35% 30%, {{thumb-hi}}, {{thumb}} 70%); box-shadow: 0 2px 6px {{thumb-shadow}}; border: none;` · checked: `radial-gradient(circle at 35% 30%, {{on-halo-hi}}, {{on-halo}} 75%)` · `switch:active slider { min-width: 28px; }` (press squash, 90ms) |
 | `.widget-volume scale trough` | `min-height: 10px; border-radius: 9999px; background: {{well}}; box-shadow: {{well-shadow}};` · `highlight` `background: {{accent}}; border-radius: 9999px;` · `slider` `min-width: 18px; min-height: 18px; margin: -4px; border-radius: 9999px;` + the knob gradient/shadow above. A negative margin is allowed only while `min-size + 2 × margin ≥ 0` (18 − 8 = 10): the old `-10px` on an 18px knob is what produced "GtkGizmo (slider) reported min width -2" |
 | volume label | `config.json` `"label"` → `glyph.volume` (U+F028), colour `ink-muted` |
-| `.widget-mpris` player | art radius 12 (config `image-radius` 12 already), buttons = glass buttons, 34px circles |
+| `.widget-mpris` player | ~~art radius 12 (config `image-radius` 12 already), buttons = glass buttons, 34px circles~~ *(corrected 2026-09-29, S7)* In 0.12.6 the player is `.widget-mpris .widget-mpris-player`, with a blurred album-art backdrop (`.mpris-background`) and `.mpris-overlay` over it; today's `.widget-mpris player` selector matches nothing. Keep the blurred backdrop, radius 14. The layer between the art and the text/buttons (`.mpris-overlay`, or whichever node the GTK Inspector shows there in I3) is `{{art-scrim}}`. Buttons (`.mpris-overlay > box > button`, `.widget-mpris > box > button`) are 34px glass circles (`pill`); their glyphs are `ink`, never `ink-muted` (§3.4) |
+| `.notification-group` *(added 2026-09-29, S6)* | container `background: transparent`; only the cards inside carry the cell. Group headers `ink-muted`, 12px. The group close button is the glass close button. Collapsed-stack cards keep the cell fill (never `pill` over `cell`). `.notification-group.critical` adds **no** `danger-soft` to the container |
 | `.notification-background` / `.notification` | cell in the centre; as a toast: glass panel (same fill, sheen, grain, rim, shadow as `.control-center`), radius 26, padding 14 |
 | `.notification-background:hover` (centre) | `background: {{pill}}` — replaces the cell fill (§3.4); 180ms `ease-out-expo` |
 | `.summary` | Demi Bold 14px `ink` · `.body` Regular 14px `ink-muted` · `.time` 12px `ink-muted` |
@@ -306,15 +339,22 @@ the installed default has them, override those first and style nodes only where 
 | `.control-center` enter | `@keyframes enh-panel-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }` `animation: enh-panel-in 280ms {{ease-out-expo}} both;` |
 | `.notification-row` enter | `@keyframes enh-item-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }` 280ms `ease-out-expo` |
 
-**Shadow room.** `glass-float` reaches ~40px sideways and ~70px below the panel. Layer-shell margins
+**Shadow room.** `glass-float` reaches ~40px sideways and ~70px below the panel. ~~Layer-shell margins
 (`control-center-margin-*`) sit *outside* the surface, so a CSS shadow there is clipped. Move the
 gap inside: `config.json` margins → 0, `.control-center { margin: 12px 12px 72px 44px; }` (keeps
-today's 12px visual gap top/right). Same idea for toasts via `.notification-row` margins. If a toast
-shadow still clips, the allowed fallback is the second `glass-float` layer only
-(`0 12px 24px -12px #08080d99`) — record it in this file if used.
+today's 12px visual gap top/right).~~ *(corrected 2026-09-29, S3)* In swaync 0.12.6 the
+`control-center-margin-*` values are GTK widget margins on the `.control-center` ScrolledWindow
+(`src/controlCenter/controlCenter.vala:313-316`, `window.set_margin_*`). That widget sits inside a
+window covering the whole output (`layer-shell-cover-screen`, default true, not set here). A CSS
+shadow is therefore not clipped by them. **Keep `control-center-margin-*` at 12 and add no CSS
+margin to `.control-center`.** Toasts live in a separate window, so the same idea still applies to
+them via `.notification-row` margins (checked in I4). If a toast shadow still clips, the allowed
+fallback is the second `glass-float` layer only (`0 12px 24px -12px #08080d99`); record it in this
+file if used.
 
 **config.json:** `transition-time` 350 → 150 (DP7); `"button-text": "Clear all"`, dnd `"text": "Do not disturb"`
-(sentence case); `widget-config.volume.label` per the table. Nothing else changes.
+(sentence case); `widget-config.volume.label` per the table. Nothing else changes. The
+`control-center-margin-*` values stay 12 (S3).
 
 **wayfire.ini:** `[animate] fade_duration` 350 → 150 (DP7). Wayfire reloads the ini on save.
 This is the one change outside rofi/swaync; it also affects every other overlay-layer surface.
@@ -377,9 +417,11 @@ Placeholders are examples, never labels. Keep each existing string's language.
 ## 8. Verification (every increment ends with the relevant subset)
 
 1. `python3 theme/enhalation/enhalation_ref.py --contrast` → `contrast gate: PASS`;
-   `--digest` → `glass-grain.png` raw-RGBA sha256 `761d566961fab186c73c3ad2f0402b0d33a1cf065706ce5213c35ab6d9b62554`,
+   `--digest` → `glass-grain.png` raw-RGBA sha256 `b0ad725516e3153d64983998862c4c1beed7de743cfc233447b1352da9613557`,
    `switch-on.png` `90fe11392e7db480f688e18f6756780ab0384c628d3fc3518a64581e8309954e`
-   Means: glass `[37.32, 37.32, 55.1, 248.0]`, switch `[248.19, 192.87, 189.68, 255.0]`.
+   Means: glass `[32.07, 32.07, 48.81, 248.0]`, switch `[248.19, 192.87, 189.68, 255.0]`.
+   *(updated 2026-09-29 for DP1's `ground` panel; the pack's original glass values were
+   `761d5669…62554`, `[37.32, 37.32, 55.1, 248.0]`. switch-on is unchanged.)*
    A sha mismatch with matching means (±0.01) is a last-bit libm difference in the switch
    gradient — report it and continue. A mean mismatch means an input changed — stop.
 2. `./scripts/gen-theme.py && ./scripts/gen-theme.py --check` → exit 0; `git status` shows only
@@ -419,10 +461,21 @@ Placeholders are examples, never labels. Keep each existing string's language.
 
 - rofi: custom `chip` box + `textbox-glyph` render as specified (rofi-theme(5): names starting with
   `textbox` are textboxes, others are boxes — VERIFIED; the look is not).
+  **RESOLVED 2026-09-29:** they render (screenshot). The Nerd v3 glyph was clipped to its one-cell
+  advance until `textbox-glyph` got `padding: 0 9px 0 0` (DP9).
 - rofi: `element-text selected { font: … }` switches weight per state.
+  **RESOLVED 2026-09-29: it does not.** Two identical rows rendered at the same weight for
+  `element-text selected`, `element-text selected.normal` and `element selected.normal { font }`.
+  Dropped as the skeleton allowed; the pill alone marks the selection.
 - rofi: a bottom-only `border` on a rounded `entry` follows the corner radius cleanly.
+  **RESOLVED 2026-09-29:** it does (screenshot).
 - rofi: `mainbox`'s 1px top border at radius 25 sits cleanly inside the window rim. If it looks
-  wrong, drop it (ring only) and note it here.
+  wrong, drop it (ring only) and note it here. **RESOLVED 2026-09-29:** no artefacts (screenshot); kept.
+- **RESOLVED 2026-09-29 (DP9), not in the original list:** rofi 2.0.0 gradients. Stop positions fail
+  to parse (`linear-gradient(165deg, #292939f7 0%, #232334f7 42%, #232334f7 100%)` → "Rofi-WARNING:
+  Failed to parse theme"; the `0, 0.42, 1` form fails too). `-dump-theme` drops the angle, so the
+  angle was measured by rendering red→blue: `0deg` = left→right, `90deg` = top→bottom,
+  `75deg` = top-left→bottom-right (= CSS 165°), `165deg` = right→left (= CSS 255°).
 - GTK4/swaync: `url("assets/…")` resolves relative to `style.css`. If not, embed the PNGs as
   `data:image/png;base64,…` (GTK has a CSS data-URL loader) — never an absolute `/home/…` path.
 - GTK4/swaync: the enter keyframes replay on every open (today's `style.css` notes it may only run
@@ -430,3 +483,7 @@ Placeholders are examples, never labels. Keep each existing string's language.
 - `[animate] fade_enabled_for = type is "overlay"` actually matches rofi and swaync surfaces.
 - The installed swaync's class for critical notifications and whether its default uses CSS custom
   properties (§5).
+- **RESOLVED 2026-09-29 (S3):** `control-center-margin-*` are widget margins inside a surface that
+  covers the output, so they do not clip the panel shadow. Evidence: swaync v0.12.6
+  `controlCenter.vala:313-316` and the `layer-shell-cover-screen` default (true) in
+  `/etc/xdg/swaync/configSchema.json`. Margins stay 12; there is no CSS margin (§5).

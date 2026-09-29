@@ -120,12 +120,30 @@ def load_tokens(path=os.path.join(ROOT, "tokens.json"), flavor=FLAVOR):
         return v
     return {k: resolve(v) for k, v in raw.items()}
 
-GLASS_DESKTOP_ALPHA8 = 0xF7          # DP1: no backdrop blur -> raise glass-fill-strong alpha
+GLASS_DESKTOP_ALPHA8 = 0xF7          # DP1: no backdrop blur -> raise the panel alpha
+# DP1 (Tyler, 2026-09-29): the panel keeps the colour his rofi launcher always had,
+# Catppuccin base (`ground`, #1e1e2e), not the design system's lighter glass-fill-strong.
+GLASS_DESKTOP_BASE = "ground"
+
+SHEEN_DEG = 165                      # the panel's top-left sheen (CSS angle)
+CORE_DEG = 115                       # the warm core gradient (CSS angle)
+
+# DP9: rofi 2.0 gradients take colour stops only, spaced evenly, and measure the
+# angle from "to right", clockwise — i.e. CSS angle - 90. The sheen ends at stop
+# ROFI_SHEEN_END of ROFI_PANEL_STOPS: 5/12 = 41.7%, standing in for CSS's 42%.
+ROFI_PANEL_STOPS = 13
+ROFI_SHEEN_END = 5
+
+def rofi_angle(css_deg):
+    return (css_deg - 90) % 360
+
+def lerp(c1, c2, t):
+    return tuple(a + (b - a) * t for a, b in zip(c1, c2))
 
 def derive(tok):
     """NORMATIVE derived desktop tokens (docs/enhalation-desktop.md §2)."""
     C = lambda n: parse_hex(tok[n])
-    glass = with_alpha(C("glass-fill-strong"), GLASS_DESKTOP_ALPHA8)
+    glass = with_alpha(C(GLASS_DESKTOP_BASE), GLASS_DESKTOP_ALPHA8)
     tint = with_alpha_factor(C("glass-edge"), 0.18)
     d = {
         "glass-desktop":   glass,
@@ -143,11 +161,21 @@ def derive(tok):
         "on-halo-hi":      mix_oklab(C("on-halo"), (1, 1, 1, 1), 0.70),
         "thumb-shadow":    with_alpha_factor(C("on-halo"), 0.35),
         "danger-rim":      with_alpha_factor(C("danger"), 0.40),
+        # S7 (2026-09-29): scrim between swaync's blurred album art and its text/buttons.
+        # The design system's crust x.70 fails over white art; x.80 (0xcc) passes.
+        "art-scrim":       with_alpha(C("ground-deep"), 0xCC),
     }
     out = {k: to_hex(v) for k, v in d.items()}
     out["tint-end"] = to_hex(d["tint-end"], force_alpha=True)
     out["well-shadow"] = f"inset 0 1px 2px {tok['glass-shade']}"
-    out["core-gradient"] = f"linear-gradient(115deg, {tok['halo-1']}, {tok['halo-2']})"
+    out["core-gradient"] = f"linear-gradient({CORE_DEG}deg, {tok['halo-1']}, {tok['halo-2']})"
+    # DP9: the same two gradients in rofi's dialect. The panel ramps linearly from
+    # tint-over-glass to glass-desktop over the first ROFI_SHEEN_END intervals, then holds.
+    stops = [to_hex(lerp(d["tint-over-glass"], glass, min(k, ROFI_SHEEN_END) / ROFI_SHEEN_END),
+                    force_alpha=True) for k in range(ROFI_PANEL_STOPS)]
+    out["rofi-panel-gradient"] = f"linear-gradient({rofi_angle(SHEEN_DEG)}deg, {', '.join(stops)})"
+    out["rofi-core-gradient"] = (f"linear-gradient({rofi_angle(CORE_DEG)}deg, "
+                                 f"{tok['halo-1']}, {tok['halo-2']})")
     return out
 
 # ───────────────────────────── contrast gate ─────────────────────────────
@@ -167,16 +195,23 @@ REQUIRED = [
     ("halo-1", "on-halo", 4.5), ("halo-2", "on-halo", 4.5),
     # non-text marks (WCAG 1.4.11): the field baseline against its well, the thumbs
     ("well", "line-strong", 3.0), ("well", "thumb", 3.0), ("well", "accent", 3.0),
+    # S7: swaync mpris text and glass buttons over album art (worst case: white art)
+    ("art", "ink", 4.5), ("art", "ink-muted", 4.5), ("pill-on-art", "ink", 4.5),
 ]
 # Pairs that FAIL and therefore must never appear in a template (§3.4).
-FORBIDDEN = [("pill-in-cell", "ink-muted"), ("pill-in-cell", "danger")]
+FORBIDDEN = [("pill-in-cell", "ink-muted"), ("pill-in-cell", "danger"),
+             ("pill-on-art", "ink-muted")]
 
 def surfaces(tok, der, backdrop):
     C = lambda n: parse_hex(tok[n])
     D = lambda n: parse_hex(der[n])
     glass = over(D("tint"), over(D("glass-desktop"), backdrop))   # worst case: tint at its peak
     cell = over(D("cell"), glass)
+    # Album art is its own backdrop, whatever sits behind the panel: worst case white.
+    art = over(D("art-scrim"), (1.0, 1.0, 1.0, 1.0))
     return {
+        "art": art,
+        "pill-on-art": over(D("pill"), art),
         "glass": glass,
         "pill": over(D("pill"), glass),
         "cell": cell,
