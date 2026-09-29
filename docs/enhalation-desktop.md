@@ -171,15 +171,21 @@ in the Switch component). Checked here against Chromium's live `mix-blend-mode: 
 mean colour within 0.6 levels (of 255) and the same spread (VERIFIED, `bakecmp` 2026-09-29). rofi's chip
 stays a flat gradient unless §9 I6 proves rofi can load an image from a repo-relative path.
 
-**DP7 — Motion.** rofi has none of its own (it appears and leaves through Wayfire's overlay fade).
-*(changed 2026-09-29, Tyler: "an in and out animation like GTK apps")* rofi now **zooms** in and out
-exactly like app windows: `[animate] zoom_enabled_for = app_id is "rofi"`, `zoom_duration = 300ms
-circle` (the same as `duration`). `animate.cpp` lets `zoom_enabled_for` override
-`fade_enabled_for`, so only rofi changes; swaync's overlay surfaces keep the fade. rofi's theme has
-no animation properties at all (only `blink`, `cursor-width`, `cursor-color`, `cursor-outline`), so
-this has to come from the compositor. VERIFIED by `wf-recorder` of the centre region: open and close
-each ramp over ~16 frames at 60fps. A full-output 3440×1440 recording drops frames and shows no
-ramp, so record a region.
+**DP7 — Motion.** ~~rofi has none of its own (it appears and leaves through Wayfire's overlay fade).~~
+
+*(changed 2026-09-29, approved by Tyler)* **rofi uses Wayfire's zoom, not the 150 ms fade.** It is
+symmetric, 300 ms in and out, matching app windows: `[animate] zoom_enabled_for = app_id is "rofi"`,
+`zoom_duration = 300ms circle` (the same as `duration`). `animate.cpp` lets `zoom_enabled_for`
+override `fade_enabled_for`, so only rofi changes. rofi's theme has no animation properties at all
+(only `blink`, `cursor-width`, `cursor-color`, `cursor-outline`), so it has to come from the
+compositor. VERIFIED by `wf-recorder` of the centre region: open and close each ramp over ~16
+frames at 60fps. A full-output 3440×1440 recording drops frames and shows no ramp, so record a
+region.
+
+**swaync is never zoomed.** Its control-centre window covers the whole output (S3), so a zoom would
+scale a screen-sized surface from the screen centre and the panel would fly in from the middle.
+swaync keeps the fade plus the CSS keyframes below.
+
 swaync: enter = CSS keyframes, 280ms `ease-out-expo` (opacity 0→1, translateY −6px→0; the control
 centre also scale .97→1). Leave cannot be styled in GTK CSS (the surface unmaps), so leave speed is
 set where it lives: `config.json` `transition-time` 150 and `wayfire.ini [animate] fade_duration`
@@ -366,6 +372,7 @@ file if used.
 
 **wayfire.ini:** `[animate] fade_duration` 350 → 150 (DP7). Wayfire reloads the ini on save.
 This is the one change outside rofi/swaync; it also affects every other overlay-layer surface.
+*(2026-09-29: rofi zooms instead, DP7, so this now affects only swaync and other overlay surfaces.)*
 
 *(corrected 2026-09-29)* Wayfire watches the file's **inode** (see `CLAUDE.md`). Anything that
 writes a new file and renames it over the old one silently kills live reload for the rest of the
