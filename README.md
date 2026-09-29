@@ -157,9 +157,10 @@ displays. The short version, because it is counter-intuitive:
 - So the compositor runs on Intel, and the 3060 is an offload device
   (`prime-run`, or the `nvidia-run` alias). This is why the session is stable
   without any `GBM_BACKEND=nvidia-drm` hacks — do not add them.
-- `mode = off` in `wayfire.ini` is static and applies the moment the file is
-  saved. Setting it on the output you are currently using, while the other is
-  off, leaves you with no picture. `dots doctor` checks for exactly that.
+- kanshi owns the output layout (`~/.config/kanshi/config`). `<super>C` and
+  `<super>A` switch between its profiles. Never put `mode = off` on `eDP-1` or
+  `DP-3` in `wayfire.ini`: it applies before kanshi and can leave you with no
+  picture. `dots doctor` checks for exactly that.
 
 ---
 

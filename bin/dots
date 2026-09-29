@@ -289,11 +289,25 @@ c.read(sys.argv[1])
 sys.exit(0)
 PY
     then chk "wayfire.ini parses"; else bad "wayfire.ini does not parse"; fi
-    # Both outputs statically off = a session with no visible screen.
-    if awk '/^\[output:/{o=$0} /^mode *= *off/{print o}' "$wf" | grep -q 'eDP-1' \
-       && awk '/^\[output:/{o=$0} /^mode *= *off/{print o}' "$wf" | grep -qE 'DP-3|HDMI'; then
-      bad "every output has 'mode = off' — that login would show no picture"
-    else chk "at least one output is enabled"; fi
+    # eDP-1 and DP-3 belong to kanshi. A static `mode = off` on either applies
+    # before kanshi starts, so undocking with eDP-1 off means a login with no
+    # picture. HDMI-A-1 (the G5's second cable, on NVIDIA) is meant to be off.
+    local offs prof
+    offs="$(awk '/^\[output:/{o=$0} /^mode *= *off/{print o}' "$wf" | grep -oE 'eDP-1|DP-3' | tr '\n' ' ' || true)"
+    if [[ -n $offs ]]; then
+      bad "wayfire.ini sets 'mode = off' on ${offs% } — leave that to kanshi, or a login can show no picture"
+    else chk "no static 'mode = off' on eDP-1 or DP-3"; fi
+    # Without use_external_output_configuration, every save of wayfire.ini
+    # re-applies [output:*] over the active kanshi profile.
+    if [[ -e $HOME/.config/kanshi/config ]]; then
+      if ! command -v kanshi >/dev/null 2>&1; then bad "kanshi is not installed — pacman -S kanshi"
+      elif pgrep -x kanshi >/dev/null; then
+        prof="$(kanshictl status 2>/dev/null | head -1)"
+        chk "kanshi running${prof:+ — $prof}"
+      else soft "kanshi is not running — outputs are on wayfire.ini defaults, every screen on"; fi
+      if grep -qE '^use_external_output_configuration *= *true' "$wf"; then chk "wayfire.ini leaves the output layout to kanshi"
+      else bad "wayfire.ini lacks [workarounds] use_external_output_configuration = true — every save undoes the kanshi profile"; fi
+    fi
     # Every helper script wayfire shells out to must actually exist.
     # Normalise ~ and $HOME to real paths BEFORE deduplicating, otherwise the
     # same script listed as ~/x and "$HOME"/x gets reported twice.

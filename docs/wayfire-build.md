@@ -8,8 +8,8 @@ the `wayfire` package and the compositor starts without it.
 
 ```
 binary   /usr/local/bin/wayfire
-version  0.11.0  (master, built against wlroots-0.20.2)
-plugins  /usr/local/lib/wayfire/          71 .so files
+version  0.12.0  (master, built against wlroots-0.20.2), buildtype=release
+plugins  /usr/local/lib/wayfire/          72 .so files
 source   https://github.com/SvnFrs/wayfire.git   branch master
 tree     ~/Documents/Projects/wayfire
 ```
@@ -28,7 +28,7 @@ Other meson subprojects: `wf-config`, `wf-json`, `wf-touch`, `wf-utils`,
 
 ```sh
 ./scripts/build-wayfire.sh              # release build, installs to /usr/local
-./scripts/build-wayfire.sh --debug      # matches the build currently installed
+./scripts/build-wayfire.sh --debug      # -O0 with debug info, for bisecting a bug
 ./scripts/build-wayfire.sh --no-install # compile only
 ```
 
@@ -47,9 +47,7 @@ verifies that every plugin named in `wayfire.ini` has a matching `.so`.
 
 Log out and back in to pick up a new build.
 
-## Two known snags
-
-**1. The packaged Wayfire is also installed.**
+## Known snag: the packaged Wayfire is also installed
 
 ```
 wayfire 0.11.0-1              /usr/lib/wayfire      73 plugins   (unused)
@@ -75,12 +73,9 @@ kept installed at the moment; removing them is the tidier end state but is left
 as your call since `wayfire-plugins-extra` depends on `wayfire` and pacman will
 want to take both.
 
-**2. The installed build is `buildtype=debug`, `optimization=0`.**
-
-That is an unoptimised compositor running as your daily driver, with
-`print_trace` on as well. Fine for bisecting a bug, needlessly slow the rest of
-the time. `./scripts/build-wayfire.sh` defaults to `--release` for that reason;
-pass `--debug` when you actually want to debug. `dots doctor` flags it.
+The installed build used to be `buildtype=debug`, `-O0`. That is fine for
+bisecting a bug, but needlessly slow as a daily driver. `dots doctor` warns if the
+build tree is ever left on debug again.
 
 ## The fork
 

@@ -19,7 +19,6 @@ Launching things and running scripts — the `[command]` section.
 | Super + T | terminal | `kitty` |
 | Super + E | explorer | `nautilus` |
 | Super + Enter | launcher | `sh ~/.config/rofi/bin/launcher` |
-| Super + Shift + Esc | lock | `swaylock` |
 | Super + Esc | logout | `wlogout` |
 | PrtSc | screenshot | `bash ~/.config/swaync/actions.sh shot` |
 | Super + Shift + S | screenshot interactive | `bash ~/.config/swaync/actions.sh snip` |
@@ -35,8 +34,8 @@ Launching things and running scripts — the `[command]` section.
 | Super + V | clipboard | `bash ~/.config/swaync/actions.sh clip` |
 | Super + Shift + V | clipboard del | `bash ~/.config/swaync/actions.sh clip-del` |
 | Super + D | calendar | `bash ~/.config/swaync/actions.sh cal` |
-| Super + C | mode code | `wlr-randr --output eDP-1 --off --output DP-3 --on` |
-| Super + A | mode train | `wlr-randr --output DP-3 --off --output eDP-1 --on` |
+| Super + C | mode code | `kanshictl switch code` |
+| Super + A | mode train | `kanshictl switch train` |
 
 ## Window and workspace management
 
@@ -109,4 +108,4 @@ Bindings owned by individual plugins.
 
 ---
 
-84 bindings across 14 sections.
+83 bindings across 14 sections.

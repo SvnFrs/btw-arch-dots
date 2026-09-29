@@ -48,8 +48,9 @@ card2  i915     eDP-1  <- the internal 2560x1600 panel, currently the only activ
                 DP-1  DP-2  DP-3  DP-4
 ```
 
-**`DP-3` — the external monitor `wayfire.ini` switches to with `<super>C` — is
-on the Intel iGPU, not the NVIDIA GPU.** Only `HDMI-A-1` is wired to the 3060.
+**`DP-3`, the external monitor (the kanshi `code` profile, `<super>C`), is on
+the Intel iGPU, not the NVIDIA GPU.** Only `HDMI-A-1` is wired to the 3060. It is
+the same G5 on a second cable, and it is kept off so the 3060 can sleep.
 
 Consequences:
 

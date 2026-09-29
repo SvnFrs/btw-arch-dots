@@ -60,6 +60,13 @@ sudo mkinitcpio -P                                 # after mkinitcpio.conf or mo
 Wayfire watches `wayfire.ini` and re-reads it on save, so option and keybinding
 changes apply live. `[autostart]` entries only run at session start.
 
+The watch is on the file's **inode**. A save that writes a new file and renames it
+over the old one (the Edit/Write tools do this) kills live reload for the rest of
+the session, silently. Confirm a change landed with python-wayfire's
+`WayfireSocket().get_option_value("section/option")`. Re-arm the watch by
+atomically replacing the symlink:
+`ln -s "$PWD/home/.config/wayfire.ini" ~/.config/.wf && mv -T ~/.config/.wf ~/.config/wayfire.ini`.
+
 ## Architecture
 
 ### Wayfire is built from source — this is load-bearing
@@ -77,14 +84,18 @@ are *also* installed and entirely unused; the running process maps only
 ### `wayfire.ini` is the hub
 
 It owns the whole session: `[autostart]` is the daemon set (fcitx5, awww,
-swaync, polkit, keyring, the IPC scripts), `[command]` is every keybinding, and
-`[output:*]` is hardware-specific.
+swaync, polkit, keyring, kanshi, the IPC scripts), and `[command]` is every
+keybinding. It does **not** own the output layout — kanshi does.
 
 Two things that bite:
 
-- **`mode = off` is static and applies on save.** Setting it on the output you
-  are using while the other is off leaves no picture and no way back from that
-  session. `dots doctor` fails on that configuration.
+- **Outputs belong to kanshi** (`~/.config/kanshi/config`: profiles `code`,
+  `train`, `laptop`). `<super>C` / `<super>A` run `kanshictl switch`.
+  `[workarounds] use_external_output_configuration = true` stops a save of
+  `wayfire.ini` from re-applying `[output:*]` over the active profile. The only
+  output section is `HDMI-A-1` pinned off. **Never put `mode = off` on `eDP-1` or
+  `DP-3`**: it is static, applies before kanshi starts, and undocked it means no
+  picture. `dots doctor` fails on it.
 - **`export FOO=bar` in `[autostart]` is a no-op** — each entry is its own
   process. Session env belongs in `~/.local/bin/start-wayfire`, which `.zprofile`
   execs on tty1. There is no display manager.
@@ -111,7 +122,7 @@ changing volume or capture behaviour — those are all easy to reintroduce.
 
 ### Theming is duplicated by design
 
-Catppuccin Mocha is hardcoded independently in kitty, swaylock, rofi
+Catppuccin Mocha is hardcoded independently in kitty, rofi
 (`catppuccin-mocha.rasi`), btop, `FZF_DEFAULT_OPTS` in `.zshrc`, wayfire's RGBA
 tuples, the GTK settings, and `GRUB_THEME`. There is no shared color source;
 changing the theme means touching all of them. `.zshrc` deliberately sources the
@@ -144,16 +155,5 @@ collide with the packaged JetBrains faces.
   build tree's own meson dependency list.
 - `~/.gitconfig` is deliberately untracked (work credential helpers, work email).
   Only `~/.config/git/ignore` is tracked.
-
-## Known outstanding items
-
-- `swaylock` is bound to `<super><shift>ESC` but **is not installed** — that
-  keybinding does nothing until `pacman -S swaylock`. It is in
-  `scripts/packages/desktop.txt`; `dots doctor` reports it.
-- `system/` holds fixes not yet applied to `/etc`: a shadowed duplicate `HOOKS=`
-  line in `mkinitcpio.conf`, and NVIDIA modprobe options consolidated from three
-  files into one. Apply with `dots push system`, then `sudo mkinitcpio -P`.
-  Applying the consolidated `nvidia.conf` also means deleting the now-redundant
-  `/etc/modprobe.d/nvidia-pm.conf` and `nvidia-power.conf` by hand — `dots push`
-  copies files, it never deletes them.
-- The installed Wayfire is a `buildtype=debug`, `-O0` build.
+- There is no screen locker. swaylock was removed on purpose because it was
+  unused, so don't add it back as a "missing" dependency.

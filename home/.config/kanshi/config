@@ -1,0 +1,33 @@
+# kanshi — output profiles. Autostarted from wayfire.ini; <super>C / <super>A
+# run `kanshictl switch code|train`.
+#
+#   eDP-1     laptop panel                     Intel iGPU
+#   DP-3      Samsung Odyssey G5 (LC34G55T)    Intel iGPU
+#   HDMI-A-1  the SAME G5, second cable        NVIDIA — kept off so the 3060 sleeps
+#
+# A profile matches only when its outputs are exactly the connected ones. When
+# several match, the first wins — so `code` is the docked default and `train`
+# is reached only through `kanshictl switch train`.
+#
+# wayfire.ini sets [workarounds] use_external_output_configuration = true.
+# Without it, every save of wayfire.ini re-applies [output:*] and undoes the
+# active profile.
+
+# Docked, G5 only.  <super>C
+profile code {
+	output DP-3 enable mode preferred position 0,0
+	output eDP-1 disable
+	output HDMI-A-1 disable
+}
+
+# Docked, laptop panel only; the G5 stays plugged in but goes dark.  <super>A
+profile train {
+	output eDP-1 enable position 0,0
+	output DP-3 disable
+	output HDMI-A-1 disable
+}
+
+# Undocked.
+profile laptop {
+	output eDP-1 enable position 0,0
+}

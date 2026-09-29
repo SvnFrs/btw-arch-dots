@@ -146,9 +146,11 @@ is no display manager.
 **Black screen after login.** `.zprofile` only starts Wayfire on tty1. On any
 other VT you get a shell. Check `~/.local/bin/start-wayfire` is executable.
 
-**Both monitors dark.** `mode = off` in `wayfire.ini` is static and applies on
-save. Switch VT (`Ctrl+Alt+F2`), log in, and fix the file — `dots doctor` flags
-this configuration before it bites.
+**Both monitors dark.** Either `wayfire.ini` has `mode = off` on `eDP-1` or
+`DP-3`, or kanshi applied a profile that turned off the only connected screen.
+Switch VT (`Ctrl+Alt+F2`), log in, and fix `wayfire.ini` or
+`~/.config/kanshi/config`. `dots doctor` flags the `wayfire.ini` case before it
+bites.
 
 **No NVIDIA after a kernel update.** DKMS rebuild failed. `sudo dkms status`,
 then `sudo mkinitcpio -P`. Confirm `linux-zen-headers` matches `linux-zen`.

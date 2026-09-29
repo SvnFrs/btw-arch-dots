@@ -21,7 +21,6 @@ xdg-desktop-portal-gtk
 kitty
 rofi
 swaync                    # notification daemon (replaced mako)
-swaylock                  # bound to <super><shift>ESC in wayfire.ini
 wlogout
 nautilus
 awww                      # wallpaper daemon
@@ -34,7 +33,8 @@ wl-clipboard
 
 # hardware controls
 brightnessctl
-wlr-randr                 # <super>C / <super>A output switching
+kanshi                    # output profiles; <super>C / <super>A switch them
+wlr-randr                 # inspect outputs: names and modes for the kanshi config
 alsa-utils
 pavucontrol
 

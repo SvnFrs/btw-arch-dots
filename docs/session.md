@@ -83,14 +83,27 @@ script's comments:
 
 ## Displays
 
-`<super>C` and `<super>A` switch between the internal panel and the external
-monitor via `wlr-randr`. Both are on the Intel iGPU — see
-[hardware.md](hardware.md).
+kanshi owns the output layout. It is autostarted from `wayfire.ini`, and its
+profiles live in `~/.config/kanshi/config`:
 
-`mode = off` in `wayfire.ini` is **static** and takes effect the moment the file
-is saved. Setting it for the output you are currently on, while the other one is
-off, leaves you with no picture at all and no way to fix it from that session.
-The warning is in the config, and `dots doctor` fails if every output is off.
+| profile  | when                          | what is on        |
+|----------|-------------------------------|-------------------|
+| `code`   | G5 plugged in (auto)          | G5 only           |
+| `train`  | G5 plugged in, `<super>A`     | laptop panel only |
+| `laptop` | G5 unplugged (auto)           | laptop panel      |
+
+`<super>C` returns to `code`. Plugging or unplugging the G5 picks the matching
+profile by itself. `kanshictl status` shows the active one. Both outputs are on
+the Intel iGPU; the G5's second cable (`HDMI-A-1`, on NVIDIA) stays off in every
+profile. See [hardware.md](hardware.md).
+
+`[workarounds] use_external_output_configuration = true` in `wayfire.ini` is what
+makes this hold. Without it, every save of `wayfire.ini` re-applies `[output:*]`
+and undoes the active profile.
+
+Do not put `mode = off` on `eDP-1` or `DP-3` in `wayfire.ini`. It is static and
+applies before kanshi starts, so undocked, or with kanshi not running, it
+leaves no picture. `dots doctor` fails on it.
 
 `wlsunset` is deliberately not autostarted: the swaync button owns it, and two
 owners means the button reports the state of an instance it did not start.
