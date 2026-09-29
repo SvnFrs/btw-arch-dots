@@ -51,9 +51,9 @@ Each verb prints one JSON object. Every error is `{"error": "…"}` plus a non-z
 |---|---|
 | `list` | `cliphist list` → `[{id, kind: text\|image, preview, lines?, chars?, fmt?, w?, h?, size?, thumb?}]`, newest first. Images are decoded once to `$XDG_RUNTIME_DIR/enhalation/clip/<id>.<fmt>` (dir mode 0700); `thumb` is that path. Cache files whose id is gone are pruned. |
 | `text <id> [max=20000]` | full text for the preview, truncated at `max` chars, with `truncated: true` if it was |
-| `copy <id>` | `cliphist decode <id> \| wl-copy` (image MIME as today's `clip` does it; K0 checks it). **Refuses an empty id.** |
+| `copy <id>` | `cliphist decode <id> \| wl-copy` (image MIME as today's `clip` does it; VERIFIED at K0: no `-t` needed). **Refuses an empty id.** |
 | `delete <id>` | stash the decoded bytes in `…/clip/undo.bin` + `undo.json`, then delete exactly that entry (the `id\tpreview` line from `list`, piped to `cliphist delete`) |
-| `undo` | `cliphist store < undo.bin`, then remove the stash. The entry comes back at the top (INFERRED cliphist behaviour; K0) |
+| `undo` | `cliphist store < undo.bin`, then remove the stash. The entry comes back at the top — VERIFIED at K0, **with a new id**, so the panel re-lists after `undo` and never reuses the old id |
 | `wipe` | `cliphist wipe`, then clear the thumb cache. Pins survive |
 | `pins`, `pin <id>`, `unpin <n>`, `copy-pin <n>` | pins (below) |
 
@@ -115,7 +115,7 @@ lengths only.
   ellipsized.
 - Clip text is shown **literally**, with ligatures off. Cartograph has programming ligatures
   (`>=` → `≥` in the mock before they were disabled). In QML use `font.features: {"liga": 0,
-  "calt": 0}`, INFERRED on Qt 6.11; if that fails, use `renderType`/`preferShaping: false`.
+  "calt": 0}` (VERIFIED at K0 on Qt 6.11.2; the `renderType`/`preferShaping: false` fallback is not needed).
   The same goes for the preview.
 
 Kind glyphs are a heuristic; when in doubt use plain text:
@@ -202,6 +202,28 @@ rollback line.
   - Dedupe-on-store behaviour for `undo`.
   - How `wl-copy` sets the image MIME, via `wl-paste --list-types` after a copy from the throwaway db.
   - `font.features` in QML on Qt 6.11.
+  **K0 record (2026-09-29).** Synthetic data only, in a throwaway `CLIPHIST_DB_PATH`. The real
+  `~/.cache/cliphist/db` had the same size and mtime before and after (stat only, never read).
+  - `cliphist` 0.7.0 (`cliphist version` also prints the db path in use, so the throwaway is confirmed).
+    `max-dedupe-search 100`, `max-items 750`, `preview-width 100`.
+  - `list` lines are `<id>` TAB `<preview>`, newest first. Text: newlines and tabs in the preview
+    become single spaces (`1\tsynthetic alpha second line after a tab`). Image:
+    `2\t[[ binary data 299 B png 64x48 ]]`, so `fmt`, `W×H` and `size` parse from that line.
+    `cliphist decode <id>` takes the id as an argument and returns the stored bytes exactly (the PNG
+    compared equal).
+  - **Dedupe:** storing bytes that are already there removes the old entry and stores them again on
+    top under a **new id** (ids `3 2 1` → `4 3 2`, count unchanged). `delete` then storing again
+    (the `undo` path) also returns on top under a new id (`4 2` → `5 4 2`). Inferred from this and
+    the `wl-paste --watch` store: a `copy` from the panel moves that clip to the top under a new id
+    in the real history, as today's rofi `clip` does.
+  - **MIME**, checked in a *private headless Wayfire* (own socket `wayland-2`, no plugins, no Xwayland;
+    stopped by its PID after its cmdline was checked), so nothing reached the real clipboard or its
+    watcher: `cliphist decode <image> | wl-copy` with no `-t` offers exactly `image/png`, and the pasted
+    bytes equal the file; text offers `text/plain`, `text/plain;charset=utf-8`, `TEXT`, `STRING`,
+    `UTF8_STRING`.
+  - **Ligatures:** `font.features: {"liga": 0, "calt": 0}` works (Qt 6.11.2, `qml` runtime offscreen,
+    software backend). By default Cartograph draws `≥ → ≠ ≡`; with the features set it draws the literal
+    `>= -> != ===` (10.8% of pixels differ).
 - **K1:** `clipctl` + unit-style tests against the throwaway db. Cover list, the thumb cache and
   its pruning, text truncation, copy refusing an empty id, delete+undo round-trip, pins, and wipe
   keeping pins.
