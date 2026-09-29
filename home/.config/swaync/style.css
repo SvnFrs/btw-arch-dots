@@ -374,13 +374,15 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
 }
 /* S6 correction: a collapsed group draws its cards stacked, the newest (last child)
    on top. Translucent cells let the lower cards show through it, so the stack is
-   opaque: cell-solid is the cell composited onto the panel. Hover keeps it, since a
-   translucent pill would bring the show-through back. A critical card layers
-   danger-soft over it (ink 8.30, ink-muted 5.39, danger 5.18). */
-.control-center .notification-group.collapsed .notification-row .notification,
-.control-center .notification-group.collapsed:hover .notification-row:not(:only-child) .notification {
+   opaque: cell-solid is the cell composited onto the panel. Hover uses pill-solid, the
+   pill composited the same way, since a translucent pill would bring the show-through
+   back. A critical card layers danger-soft over either (danger 5.18 / 4.59 hovered). */
+.control-center .notification-group.collapsed .notification-row .notification {
   background-color: #252636;
   background-image: none;
+}
+.control-center .notification-group.collapsed:hover .notification-row:not(:only-child) .notification {
+  background-color: #2e2f40;
 }
 .control-center .notification-group.collapsed .notification-row .notification.critical {
   background-color: #252636;

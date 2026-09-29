@@ -167,6 +167,8 @@ def derive(tok):
         # S6 correction (2026-09-29): swaync draws a collapsed group's cards stacked on top
         # of each other; translucent cells let the lower cards show through the top one.
         "cell-solid":      with_alpha(over(with_alpha_factor(C("ink"), 0.04), glass), 0xFF),
+        # Tyler, 2026-09-29: hover on a collapsed stack must stay opaque too.
+        "pill-solid":      with_alpha(over(with_alpha_factor(C("ink"), 0.09), glass), 0xFF),
     }
     out = {k: to_hex(v) for k, v in d.items()}
     out["tint-end"] = to_hex(d["tint-end"], force_alpha=True)
@@ -201,6 +203,9 @@ REQUIRED = [
     # S6 correction: the opaque cell of a collapsed notification group, same pairs as cell
     ("cell-solid", "ink", 4.5), ("cell-solid", "ink-muted", 4.5), ("cell-solid", "accent", 4.5),
     ("cell-solid", "danger", 4.5),
+    # hover on a collapsed stack: the opaque pill, same pairs as pill
+    ("pill-solid", "ink", 4.5), ("pill-solid", "ink-muted", 4.5), ("pill-solid", "accent", 4.5),
+    ("pill-solid", "spark", 4.5), ("pill-solid", "danger", 4.5),
     ("well", "ink", 4.5), ("well", "ink-muted", 4.5), ("well", "accent", 4.5),
     ("danger-soft", "ink", 4.5), ("danger-soft", "ink-muted", 4.5), ("danger-soft", "danger", 4.5),
     ("halo-1", "on-halo", 4.5), ("halo-2", "on-halo", 4.5),
@@ -224,6 +229,7 @@ def surfaces(tok, der, backdrop):
         "art": art,
         "pill-on-art": over(D("pill"), art),
         "cell-solid": D("cell-solid"),        # opaque: the backdrop does not reach it
+        "pill-solid": D("pill-solid"),
         "glass": glass,
         "pill": over(D("pill"), glass),
         "cell": cell,

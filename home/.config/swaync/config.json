@@ -18,7 +18,7 @@
   "hide-on-clear": true,
   "hide-on-action": true,
   "keyboard-shortcuts": true,
-  "notification-2fa-action": true,
+  "notification-2fa-action": false,
   "notification-inline-replies": false,
   "image-visibility": "when-available",
   "transition-time": 150,
