@@ -87,6 +87,54 @@ Esc on `Super+Shift+S` pops a "slurp loi" notification (seen in the log). Fix: a
 **and** output containing `selection cancelled`. Any other exit-1 output still notifies, because
 catching real failures was the point of the original fix. The comment explaining why stays.
 
+**C2 design (Tyler, 2026-09-29): the recorder's exit decides the final state.**
+- `rec-start` writes `recording` **before** launching (so an instant death is reported against this
+  run's file, not the previous one in `rec.json`). It then runs a supervisor,
+  `setsid -f bash -c 'wf-recorder "$@"; bash "$0" rec-exited $?' "$ACTIONS" "${args[@]}"`, with the
+  same args (`--audio=$MON`, and the `rec_alive` zombie filter for the start check). It then adds the
+  wf-recorder `pid` to `rec.json` (for the log only; nothing polls it). `rec-start` does nothing while
+  a recorder runs.
+- `rec-stop` only sends `pkill -INT -x wf-recorder`; it writes no state.
+- `rec-exited <code>` is the **only** writer of the final state. It runs after wf-recorder has exited:
+  - With the `discard` flag set, it does a read-only check that the file named in `rec.json` is under
+    `$VID` and ends in `.mp4` (pattern match, never a glob). It then `ls -l`s it into the log,
+    deletes it, and removes the flag and `rec.json`.
+  - Else `saved`, with size from `stat` and `duration_ms` from `ffprobe`. Else `failed`.
+  - The fallback notifications, when the island does not answer `ping`, are sent here.
+- `rec-discard` touches the flag, then `rec-stop`.
+- The island only acts on (and only shows) a `file` under `~/Videos/Recordings/` without `/../`, and a
+  `log` equal to the actions log. Anything else in `rec.json` is ignored.
+
+*Three places C2 goes beyond the spec above, for Tyler to confirm:*
+1. **`saved` also needs `ffprobe` to read a duration.** The spec's literal rule (file > 0 bytes ⇒
+   saved) would call a crashed recording "saved": it has bytes but no moov atom. Its conclusion,
+   though, is that a crash ends as "failed", and the ffprobe condition is what makes that true.
+   The exit code is logged; SIGINT exits 0.
+2. **`rec-stop` with no recorder running calls `rec-exited` directly.** Otherwise a stale
+   `recording` state (like the C1 hand-written test) would have nobody to finalize it.
+3. **The supervisor runs `bash "$0" rec-exited`, not `"$0" rec-exited`.** The exec bit can be lost
+   (see the `wayfire.ini` note on calling `bash <path>`).
+
+Known, pre-existing: `actions.sh` rotates its log with `tail … > tmp && mv`, so a long-running child
+(wf-recorder, via the supervisor) keeps writing to the old, renamed log inode. Only wf-recorder's
+own output is affected; `rec-exited` is a new process and logs normally.
+
+**C2 test run (2026-09-29).** All of these passed, with the island running and with it stopped:
+- area `rec-start`/`rec-stop`: `ffprobe` 4.117 s vs the island timer 4.152 s (−35 ms);
+- `rec-discard`: file deleted, `rec.json` and the flag gone, island left;
+- `rec-area` toggle (the Shift+Super+PrtSc path, slurp faked): 2.92 s;
+- `rec` toggle (the Super+PrtSc path, full screen): 3.01 s;
+- island down: the critical "REC" notification, replaced by "Da dung ghi" on stop, and `rec.json`
+  still written;
+- D2: an Esc sends nothing, and a real slurp error still notifies;
+- volume ±5: channels equal, back to 46%;
+- the live argv carries `--audio=…analog-stereo.monitor`, and wf-recorder says "Using PulseAudio
+  device: …monitor";
+- `VID` resolves to `~/Videos/Recordings`.
+
+The island is autostarted: `wayfire.ini [autostart] capture-ui = qs -c enhalation`, written in place
+and confirmed over IPC.
+
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
 island is not running (`qs -c enhalation ipc call rec ping` fails), so there is never both.
 

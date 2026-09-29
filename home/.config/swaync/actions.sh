@@ -3,7 +3,7 @@
 # Cac hanh dong "nang" cua swaync (screenshot / screen record), tach khoi
 # config.json.
 #
-# Dung: actions.sh <snip|shot|rec|rec-area|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
+# Dung: actions.sh <snip|shot|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
 #
 # TAI SAO PHAI TACH RA FILE RIENG:
 #   1. Nhoi mot pipeline nhieu lenh vao chuoi JSON thi khong ai debug duoc:
@@ -133,38 +133,146 @@ rec_alive() {
 # tam thoi. Khong co state nao de lech, khong phai ghi lai config.json.
 REC_ID="${XDG_RUNTIME_DIR:-/tmp}/swaync-rec-id"
 
+# TRANG THAI CHO RECORDING ISLAND (docs/capture-ui.md §2.2)
+# Island (Quickshell, ~/.config/quickshell/enhalation) chi DOC file nay, khong bao
+# gio tu chay recorder: script nay van la thu DUY NHAT chay wf-recorder. Ghi atomic
+# (tmp + mv) de island khong bao gio doc phai mot file ghi do dang.
+# Khi island KHONG chay (`ping` that bai), dung lai notification cu — khong bao
+# gio co ca hai cung luc.
+#
+# AI GHI TRANG THAI CUOI: CHI `rec-exited`. rec_start chay wf-recorder DUOI mot
+# bash giam sat; khi wf-recorder thoat vi bat ky ly do gi (Stop, huy, crash) bash
+# do goi `actions.sh rec-exited <code>` — luc do file da finalize xong. Nen khong
+# co duong nao de island ket mai o "REC".
+REC_STATE="${XDG_RUNTIME_DIR:-/tmp}/capture/rec.json"
+REC_DISCARD="${XDG_RUNTIME_DIR:-/tmp}/capture/discard"
+ACTIONS="$(realpath "${BASH_SOURCE[0]}")"
+
+json_str() { local s=${1//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
+
+# rec_state <state> <file> <started ms> <mode> [geometry] [size] [duration_ms] [pid]
+# pid chi de doc log/debug; khong co gi poll no.
+rec_state() {
+  local g=null s=null d=null p=null
+  [[ -n ${5:-} ]] && g=$(json_str "$5")
+  [[ -n ${6:-} ]] && s=$6
+  [[ -n ${7:-} ]] && d=$7
+  [[ -n ${8:-} ]] && p=$8
+  mkdir -p "$(dirname "$REC_STATE")"
+  printf '{"state":"%s","file":%s,"started":%s,"mode":"%s","geometry":%s,"audio":"desktop","size":%s,"duration_ms":%s,"pid":%s,"log":%s}\n' \
+    "$1" "$(json_str "$2")" "$3" "$4" "$g" "$s" "$d" "$p" "$(json_str "$LOG")" >"$REC_STATE.tmp" \
+    && mv -f "$REC_STATE.tmp" "$REC_STATE"
+}
+
+rec_field() {                      # $1 = key trong rec.json; rong neu khong co
+  python3 -c 'import json, sys
+try: v = json.load(open(sys.argv[1])).get(sys.argv[2])
+except Exception: v = None
+print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
+}
+
+island_up() { timeout 1 qs -c enhalation ipc call rec ping >/dev/null 2>&1; }
+
+# Notification "REC" cu (neu co): island dang chay -> dong no; khong -> thay bang $1/$2.
+rec_note_done() {
+  local id
+  id=$(cat "$REC_ID" 2>/dev/null) || id=""
+  if island_up; then
+      [[ -n $id ]] && gdbus call --session --dest org.freedesktop.Notifications \
+          --object-path /org/freedesktop/Notifications \
+          --method org.freedesktop.Notifications.CloseNotification "$id" >/dev/null 2>&1
+  elif [[ -n $id ]]; then
+      notify-send -a swaync -r "$id" -t 4000 "$1" "$2" || true
+  else
+      notify "$1" "$2"
+  fi
+  rm -f "$REC_ID"
+}
+
 rec_start() {                      # $1 = geometry "x,y WxH" (bo trong = full screen)
   close_panel
   mkdir -p "$VID"
-  local F MON args id
+  local F MON args id started pid mode=screen
   F="$VID/$(date +%F_%H-%M-%S).mp4"
   MON="$(pactl get-default-sink).monitor"      # desktop audio, KHONG phai mic
   args=( -D -r 60 "--audio=$MON" -f "$F" )
-  [[ -n ${1:-} ]] && args+=( -g "$1" )
-  setsid -f wf-recorder "${args[@]}"
+  [[ -n ${1:-} ]] && { args+=( -g "$1" ); mode=area; }
+  started=$(date +%s%3N)
+  rm -f "$REC_DISCARD"
+  # Ghi "recording" TRUOC khi chay: neu wf-recorder chet ngay, rec-exited doc dung
+  # file cua LAN NAY (khong phai file cu con trong rec.json) va ghi "failed".
+  rec_state recording "$F" "$started" "$mode" "${1:-}"
+  # $0 = duong dan script nay, "$@" = dung cac args o tren (giu nguyen --audio=).
+  # Goi `bash "$0"` chu khong goi thang script: bit thuc thi co the mat (xem wayfire.ini).
+  setsid -f bash -c 'wf-recorder "$@"; bash "$0" rec-exited $?' "$ACTIONS" "${args[@]}"
   sleep 0.8
   # `setsid -f` tra ve ngay lap tuc nen exit code cua no KHONG cho biet
   # wf-recorder da khoi dong duoc hay chua. Phai kiem tra process that.
   if rec_alive; then
-      # -p in ra id de sau nay thay the dung cai notification nay
-      id=$(notify-send -p -a swaync -u critical -t 0 \
-             "REC - dang ghi man hinh" "$(basename "$F")" 2>/dev/null) || id=""
-      [[ -n $id ]] && printf '%s' "$id" >"$REC_ID"
+      pid=$(pgrep -n -x wf-recorder)
+      [[ $(rec_field state) == recording ]] && rec_state recording "$F" "$started" "$mode" "${1:-}" "" "" "$pid"
+      if ! island_up; then
+          # -p in ra id de sau nay thay the dung cai notification nay
+          id=$(notify-send -p -a swaync -u critical -t 0 \
+                 "REC - dang ghi man hinh" "$(basename "$F")" 2>/dev/null) || id=""
+          [[ -n $id ]] && printf '%s' "$id" >"$REC_ID"
+      fi
   else
-      notify "Recording" "KHOI DONG THAT BAI - xem $LOG"
+      # wf-recorder da chet: bash giam sat da (hoac sap) goi rec-exited -> "failed".
+      island_up || notify "Recording" "KHOI DONG THAT BAI - xem $LOG"
   fi
 }
 
+# Chi gui SIGINT (wf-recorder finalize moov atom roi thoat); rec-exited ghi trang
+# thai. Neu KHONG co wf-recorder nao (vd state cu con sot), khong ai goi rec-exited
+# ca, nen goi no truc tiep de state van ket thuc.
 rec_stop() {
-  pkill -INT -x wf-recorder        # SIGINT -> wf-recorder finalize moov atom
-  local id
-  id=$(cat "$REC_ID" 2>/dev/null) || id=""
-  if [[ -n $id ]]; then
-      notify-send -a swaync -r "$id" -t 4000 "Da dung ghi" "Da luu vao $VID" || true
+  if rec_alive; then
+      pkill -INT -x wf-recorder
   else
-      notify "Recording" "Da dung va luu"
+      rec_exited none
   fi
-  rm -f "$REC_ID"
+}
+
+rec_discard() {
+  mkdir -p "$(dirname "$REC_DISCARD")"
+  touch "$REC_DISCARD"
+  rec_stop
+}
+
+# Bash giam sat goi (sau khi wf-recorder DA thoat). Thu DUY NHAT ghi trang thai cuoi.
+rec_exited() {                     # $1 = exit code cua wf-recorder
+  local F started mode geom size dur
+  echo "wf-recorder da thoat: code=${1:-?}"
+  F=$(rec_field file); started=$(rec_field started)
+  mode=$(rec_field mode); geom=$(rec_field geometry)
+  [[ -n $started ]] || started=0
+  [[ -n $mode ]] || mode=screen
+  if [[ -e $REC_DISCARD ]]; then
+      # Kiem tra read-only TRUOC khi xoa: dung MOT file, nam trong $VID, duoi .mp4.
+      # Khong bao gio glob.
+      if [[ -n $F && $F == "$VID"/*.mp4 && $F != *"/../"* && -f $F ]]; then
+          ls -l -- "$F"
+          rm -f -- "$F"
+      else
+          echo "discard: bo qua duong dan khong hop le [$F]"
+      fi
+      rm -f "$REC_DISCARD" "$REC_STATE"
+      rec_note_done "Da huy ghi" "Da xoa ban ghi"
+      return
+  fi
+  # "saved" can file > 0 byte VA ffprobe doc duoc duration. Crash giua chung de lai
+  # file co byte nhung khong co moov atom -> ffprobe that bai -> "failed".
+  dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$F" 2>/dev/null)
+  if [[ -n $F && -s $F && $dur =~ ^[0-9.]+$ ]]; then
+      size=$(stat -c %s -- "$F")
+      rec_state saved "$F" "$started" "$mode" "$geom" "$size" \
+          "$(awk -v d="$dur" 'BEGIN { printf "%d", d * 1000 }')"
+      rec_note_done "Da dung ghi" "Da luu vao $VID"
+  else
+      rec_state failed "$F" "$started" "$mode" "$geom"
+      rec_note_done "Recording" "LUU THAT BAI - xem $LOG"
+  fi
 }
 
 # Chay slurp va PHAN BIET "nguoi dung bam Esc" voi "slurp that bai".
@@ -180,7 +288,11 @@ run_slurp() {
   # PHAI ra stderr: stdout cua ham nay dang bi $( ) bat, echo binh thuong se
   # chui vao bien G thay vi vao log.
   echo "slurp that bai: exit=$rc  output=[$g]" >&2
-  if [[ $rc -eq 1 && -z $g ]]; then
+  # slurp 1.5 IN RA "selection cancelled" khi bam Esc (exit 1). Ban truoc chi coi
+  # "exit 1 + output RONG" la huy, nen Esc bi bao thanh loi "slurp loi (exit 1)".
+  # Gio: huy = exit 1 VA output chua "selection cancelled". Moi exit 1 khac VAN bao
+  # loi — bat duoc loi that moi la ly do cua ban sua goc.
+  if [[ $rc -eq 1 && $g == *"selection cancelled"* ]]; then
     return 1                                       # huy binh thuong, im lang
   fi
   notify "Screenshot" "slurp loi (exit $rc) - xem $LOG"
@@ -226,6 +338,13 @@ case "${1:-}" in
           rec_start "$G"
       fi
       ;;
+
+  # --- recording island (docs/capture-ui.md §2.2) ---
+  # rec / rec-area o tren van la toggle nhu cu, qua cung cac ham nay.
+  rec-start)   rec_alive || rec_start "${2:-}" ;;
+  rec-stop)    rec_stop ;;
+  rec-discard) rec_discard ;;
+  rec-exited)  rec_exited "${2:-}" ;;     # chi bash giam sat goi
 
   # --- lich + ngay gio, hien duoi dang MOT NOTIFICATION ---
   # swaync KHONG co widget calendar. Danh sach widget day du (README + man
@@ -280,7 +399,7 @@ $cal_out"
       ;;
 
   *)
-      echo "usage: actions.sh <snip|shot|rec|rec-area|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
+      echo "usage: actions.sh <snip|shot|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
       exit 2
       ;;
 esac

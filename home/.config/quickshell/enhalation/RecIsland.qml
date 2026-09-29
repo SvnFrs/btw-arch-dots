@@ -20,6 +20,15 @@ PanelWindow {
     property string dismissed: ""           // key of a saved/failed state that already left
     property real now: Date.now()
 
+    // Hardening: rec.json is a plain file, so only act on what actions.sh would write.
+    // Play / Show in folder / Copy take paths under ~/Videos/Recordings; Open log takes
+    // the actions log. Anything else in the file is ignored.
+    readonly property string recDir: home + "/Videos/Recordings/"
+    readonly property string actionsLog: (Quickshell.env("XDG_CACHE_HOME") || home + "/.cache") + "/swaync-actions.log"
+    readonly property string file: rec && typeof rec.file === "string" && rec.file.startsWith(recDir)
+                                   && rec.file.indexOf("/../") < 0 ? rec.file : ""
+    readonly property string logPath: rec && rec.log === actionsLog ? rec.log : ""
+
     readonly property string key: rec ? rec.state + ":" + rec.started : ""
     readonly property string mode: phase === "recording"
         ? (armed ? "armed" : expanded ? "expanded" : "collapsed") : phase
@@ -43,7 +52,10 @@ PanelWindow {
         return h > 0 ? h + ":" + p(Math.floor(s % 3600 / 60)) + ":" + p(s % 60)
                      : p(Math.floor(s / 60)) + ":" + p(s % 60);
     }
-    function megabytes(b) { return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : (b / 1e6).toFixed(1) + " MB"; }
+    function bytes(b) {
+        return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB"
+             : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB";
+    }
     function tilde(p) { return p && p.startsWith(home) ? "~" + p.slice(home.length) : (p || ""); }
     function run(argv) { Quickshell.execDetached(argv); }
 
@@ -269,7 +281,7 @@ PanelWindow {
                                     ? "Area " + win.rec.geometry.split(" ")[1].replace("x", "×") : "Screen";
                             if (win.phase === "saved" && win.rec.duration_ms != null)
                                 return win.clock(win.rec.duration_ms)
-                                    + (win.rec.size != null ? " · " + win.megabytes(win.rec.size) : "");
+                                    + (win.rec.size != null ? " · " + win.bytes(win.rec.size) : "");
                             return "";
                         }
                     }
@@ -296,7 +308,7 @@ PanelWindow {
                 Label { id: audio; text: "Desktop audio"; font.pixelSize: 12; color: Theme.inkMuted }
                 Label {
                     width: parent.width - x
-                    text: win.rec && win.rec.file ? win.rec.file.split("/").pop() : ""
+                    text: win.file.split("/").pop()
                     font.pixelSize: 12; color: Theme.inkMuted
                     elide: Text.ElideMiddle
                 }
@@ -304,7 +316,7 @@ PanelWindow {
             Label {
                 visible: win.phase === "saved" || win.phase === "failed"
                 width: parent.width
-                text: win.tilde(win.phase === "failed" ? (win.rec && win.rec.log) : (win.rec && win.rec.file))
+                text: win.tilde(win.phase === "failed" ? win.logPath : win.file)
                 font.pixelSize: 12; color: Theme.inkMuted
                 elide: Text.ElideMiddle
             }
@@ -367,16 +379,16 @@ PanelWindow {
                 spacing: Theme.islandGap
                 GlassButton {
                     glyph: Theme.gPlay; text: "Play"
-                    onClicked: win.run(["xdg-open", win.rec.file])
+                    onClicked: if (win.file) win.run(["xdg-open", win.file])
                 }
                 GlassButton {
                     glyph: Theme.gFolder; text: "Show in folder"
-                    onClicked: showItem.running = true
+                    onClicked: if (win.file) showItem.running = true
                 }
                 GlassButton {
                     implicitWidth: Theme.stopH
                     glyph: Theme.gCopy
-                    onClicked: win.run(["wl-copy", win.rec.file])
+                    onClicked: if (win.file) win.run(["wl-copy", win.file])
                 }
             }
 
@@ -386,7 +398,7 @@ PanelWindow {
                 GlassButton {
                     glyph: Theme.gWarn; glyphColor: Theme.danger
                     text: "Open log"
-                    onClicked: win.run(["xdg-open", win.rec.log])
+                    onClicked: if (win.logPath) win.run(["xdg-open", win.logPath])
                 }
             }
         }
@@ -398,10 +410,10 @@ PanelWindow {
         command: ["gdbus", "call", "--session", "--dest", "org.freedesktop.FileManager1",
                   "--object-path", "/org/freedesktop/FileManager1",
                   "--method", "org.freedesktop.FileManager1.ShowItems",
-                  "['" + encodeURI("file://" + (win.rec ? win.rec.file : "")) + "']", ""]
+                  "['" + encodeURI("file://" + win.file) + "']", ""]
         onExited: (code) => {
-            if (code !== 0 && win.rec)
-                win.run(["xdg-open", win.rec.file.slice(0, win.rec.file.lastIndexOf("/"))]);
+            if (code !== 0 && win.file)
+                win.run(["xdg-open", win.file.slice(0, win.file.lastIndexOf("/"))]);
         }
     }
 }
