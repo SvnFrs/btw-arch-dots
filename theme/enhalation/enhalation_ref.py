@@ -169,6 +169,8 @@ def derive(tok):
         "cell-solid":      with_alpha(over(with_alpha_factor(C("ink"), 0.04), glass), 0xFF),
         # Tyler, 2026-09-29: hover on a collapsed stack must stay opaque too.
         "pill-solid":      with_alpha(over(with_alpha_factor(C("ink"), 0.09), glass), 0xFF),
+        # capture-ui §3: the scrim outside the selection. Never a text surface.
+        "capture-scrim":   with_alpha_factor(C("ground-deep"), 0.55),
     }
     out = {k: to_hex(v) for k, v in d.items()}
     out["tint-end"] = to_hex(d["tint-end"], force_alpha=True)
@@ -210,6 +212,8 @@ REQUIRED = [
     # hover on a collapsed stack: the opaque pill, same pairs as pill
     ("pill-solid", "ink", 4.5), ("pill-solid", "ink-muted", 4.5), ("pill-solid", "accent", 4.5),
     ("pill-solid", "spark", 4.5), ("pill-solid", "danger", 4.5),
+    # capture-ui §5: the selected segment of a segmented control is a pill over a well
+    ("pill-on-well", "ink", 4.5),
     ("well", "ink", 4.5), ("well", "ink-muted", 4.5), ("well", "accent", 4.5),
     ("danger-soft", "ink", 4.5), ("danger-soft", "ink-muted", 4.5), ("danger-soft", "danger", 4.5),
     ("halo-1", "on-halo", 4.5), ("halo-2", "on-halo", 4.5),
@@ -234,6 +238,7 @@ def surfaces(tok, der, backdrop):
         "pill-on-art": over(D("pill"), art),
         "cell-solid": D("cell-solid"),        # opaque: the backdrop does not reach it
         "pill-solid": D("pill-solid"),
+        "pill-on-well": over(D("pill"), over(D("well"), glass)),
         "glass": glass,
         "pill": over(D("pill"), glass),
         "cell": cell,

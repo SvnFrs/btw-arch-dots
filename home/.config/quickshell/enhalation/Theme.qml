@@ -51,9 +51,15 @@ Singleton {
     readonly property color tint: css("#f5e0dc07")
     readonly property color tintEnd: css("#f5e0dc00")
     readonly property color glassDesktop: css("#1e1e2ef7")
+    readonly property color thumb: css("#9399b2")
+    readonly property color thumbHi: css("#b2b7c9")
+    readonly property color thumbShadow: css("#11111b59")
+    readonly property color captureScrim: css("#11111b8c")
 
     // depth
     readonly property var glassFloat: shadow("0 30px 60px -20px #08080de6, 0 12px 24px -12px #08080d99")
+    readonly property var haloGlow: shadow("0 10px 34px -8px #cba6f780, 0 6px 22px -8px #fab38766")
+    readonly property var haloGlowLift: shadow("0 18px 48px -8px #cba6f7a6, 0 8px 28px -8px #fab3878c")
     readonly property real opacityDisabled: 0.42
 
     // motion
@@ -91,4 +97,13 @@ Singleton {
     readonly property string gCopy: ""
     readonly property string gWarn: ""
     readonly property string gFolder: ""
+    readonly property string gArea: ""
+    readonly property string gScreen: ""
+    readonly property string gWindow: ""
+    readonly property string gCamera: ""
+    readonly property string gRecord: ""
+    readonly property string gPhoto: ""
+    readonly property string gVideo: ""
+    readonly property string gPointer: ""
+    readonly property string gClose: ""
 }

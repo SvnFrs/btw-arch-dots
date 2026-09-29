@@ -20,7 +20,7 @@ Launching things and running scripts — the `[command]` section.
 | Super + E | explorer | `nautilus` |
 | Super + Enter | launcher | `sh ~/.config/rofi/bin/launcher` |
 | Super + Esc | logout | `wlogout` |
-| PrtSc | screenshot | `bash ~/.config/swaync/actions.sh shot` |
+| PrtSc | screenshot | `bash ~/.config/swaync/actions.sh capture-open area photo` |
 | Super + Shift + S | screenshot interactive | `bash ~/.config/swaync/actions.sh snip` |
 | Super + PrtSc | recording | `bash ~/.config/swaync/actions.sh rec` |
 | Shift + Super + PrtSc | recording interactive | `bash ~/.config/swaync/actions.sh rec-area` |

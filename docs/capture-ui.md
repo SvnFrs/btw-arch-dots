@@ -145,6 +145,31 @@ own output is affected; `rec-exited` is a new process and logs normally.
 The island is autostarted: `wayfire.ini [autostart] capture-ui = qs -c enhalation`, written in place
 and confirmed over IPC.
 
+**C3 record (2026-09-29).**
+- *(correction, with evidence)* `show` is also the name of `qs ipc`'s own subcommand (list
+  targets), so the §2.2 call `qs -c enhalation ipc call capture show area photo` is parsed as that
+  subcommand: `show: The following arguments were not expected: area photo`, exit 109. Every PrtSc
+  therefore fell back to `snip`. With CLI11's `--`, `qs -c enhalation ipc call -- capture show area
+  photo` exits 0 and opens the overlay. `actions.sh` uses the `--` form; the function keeps the
+  brief's name.
+- **Freeze:** two `grim -l 1` shots **in parallel** (on the focused output from Wayfire IPC), both
+  before the overlay maps. The output name is written to `capture/freeze-output`, and the overlay
+  only opens on that output. PNG costs ~200 ms per frame at 3440×1440; `-t ppm` would be ~41 ms, but
+  it renames the §2.2 files, so that is Tyler's call. `capture-open` returns after ~0.8 s,
+  including the 250 ms panel wait.
+- **`shot-crop`** accepts only non-negative integers, and w, h > 0. VERIFIED: 640×360, pixel-identical
+  to the freeze crop (ImageMagick AE = 0); bad input returns 1 and notifies.
+- **Sizing:** the overlay sizes the selection from the **screen** (`ShellScreen.width/height`),
+  because the window is not sized yet when it activates (that first gave `-270 -130`).
+- **Test hooks** on `capture`, next to `show`: `select x y w h` (logical px), `shoot`, `cancel`, and
+  `plan`. `plan` returns the `shot-crop` the shutter would run, **without** running it, so tests
+  never put a screenshot into the real clipboard history.
+- **C3 scope:** Window mode and Video are drawn but disabled (`opacity-disabled`) until C4.
+  VERIFIED plans: default area `shot-crop 1400 540 640 360`, Screen `shot-crop 0 0 3440 1440`.
+  Fallback: with Quickshell down, `capture-open area photo` runs `snip`.
+- **Still open:** crop = selection × scale on the `laptop` kanshi profile. Both outputs are at scale
+  1.0, and switching profiles moves windows, so Tyler runs that one.
+
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
 island is not running (`qs -c enhalation ipc call rec ping` fails), so there is never both.
 

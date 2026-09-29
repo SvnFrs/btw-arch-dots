@@ -53,6 +53,16 @@ GLYPHS = {
     "copy": 0xF0C5,
     "warn": 0xF071,
     "folder-open": 0xF07C,
+    # capture overlay (capture-ui.md §3)
+    "area": 0xF125,
+    "screen": 0xF108,
+    "window": 0xF2D2,
+    "camera": 0xF030,
+    "record": 0xF111,
+    "photo": 0xF03E,
+    "video": 0xF03D,
+    "pointer": 0xF245,
+    "close": 0xF00D,
 }
 
 PLACEHOLDER = re.compile(r"\{\{([^{}]*)\}\}")

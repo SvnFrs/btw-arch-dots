@@ -50,9 +50,15 @@ Singleton {
     readonly property color tint: css("{{tint}}")
     readonly property color tintEnd: css("{{tint-end}}")
     readonly property color glassDesktop: css("{{glass-desktop}}")
+    readonly property color thumb: css("{{thumb}}")
+    readonly property color thumbHi: css("{{thumb-hi}}")
+    readonly property color thumbShadow: css("{{thumb-shadow}}")
+    readonly property color captureScrim: css("{{capture-scrim}}")
 
     // depth
     readonly property var glassFloat: shadow("{{glass-float}}")
+    readonly property var haloGlow: shadow("{{halo-glow}}")
+    readonly property var haloGlowLift: shadow("{{halo-glow-lift}}")
     readonly property real opacityDisabled: {{opacity-disabled}}
 
     // motion
@@ -90,4 +96,13 @@ Singleton {
     readonly property string gCopy: "{{glyph.copy}}"
     readonly property string gWarn: "{{glyph.warn}}"
     readonly property string gFolder: "{{glyph.folder-open}}"
+    readonly property string gArea: "{{glyph.area}}"
+    readonly property string gScreen: "{{glyph.screen}}"
+    readonly property string gWindow: "{{glyph.window}}"
+    readonly property string gCamera: "{{glyph.camera}}"
+    readonly property string gRecord: "{{glyph.record}}"
+    readonly property string gPhoto: "{{glyph.photo}}"
+    readonly property string gVideo: "{{glyph.video}}"
+    readonly property string gPointer: "{{glyph.pointer}}"
+    readonly property string gClose: "{{glyph.close}}"
 }

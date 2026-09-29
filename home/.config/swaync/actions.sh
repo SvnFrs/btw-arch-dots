@@ -3,7 +3,7 @@
 # Cac hanh dong "nang" cua swaync (screenshot / screen record), tach khoi
 # config.json.
 #
-# Dung: actions.sh <snip|shot|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
+# Dung: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
 #
 # TAI SAO PHAI TACH RA FILE RIENG:
 #   1. Nhoi mot pipeline nhieu lenh vao chuoi JSON thi khong ai debug duoc:
@@ -288,6 +288,59 @@ rec_exited() {                     # $1 = exit code cua wf-recorder
   fi
 }
 
+# CAPTURE OVERLAY (docs/capture-ui.md §2.2, §2.3)
+# Overlay (Quickshell) chi HIEN anh "freeze" va goi lai shot-crop; grim, slurp va
+# wf-recorder van CHI chay trong file nay.
+CAP_DIR="${XDG_RUNTIME_DIR:-/tmp}/capture"
+
+capture_open() {                   # $1 = area|screen|window, $2 = photo|video
+  local mode=${1:-area} kind=${2:-photo} out a b
+  close_panel
+  sleep 0.25                       # doi control center bien mat (bai hoc cu o tren)
+  mkdir -p "$CAP_DIR"
+  if [[ $kind == photo ]]; then
+      out=$(python3 -c 'from wayfire import WayfireSocket; print(WayfireSocket().get_focused_output()["name"])' 2>/dev/null)
+      # Hai anh chup SONG SONG (-l 1 = nen nhanh, ~0.2 s thay vi 0.5 s), ca hai TRUOC khi
+      # overlay hien, nen overlay khong bao gio lot vao anh. freeze-cursor co con tro.
+      grim -l 1 ${out:+-o "$out"} "$CAP_DIR/freeze.png" & a=$!
+      grim -l 1 -c ${out:+-o "$out"} "$CAP_DIR/freeze-cursor.png" & b=$!
+      if ! wait "$a" || ! wait "$b"; then
+          notify "Screenshot" "grim loi - xem $LOG"; return 1
+      fi
+      printf '%s' "$out" >"$CAP_DIR/freeze-output"
+      # `--`: "show" is ALSO the name of `qs ipc show` (list targets), so without it the CLI
+      # parses `ipc call capture show …` as that subcommand, rejects the args (exit 109),
+      # and a PrtSc would silently fall back to snip.
+      if timeout 2 qs -c enhalation ipc call -- capture show "$mode" "$kind" >/dev/null 2>&1; then
+          return 0
+      fi
+  fi
+  # Quickshell khong chay (hoac Video, den C4 moi co): lam dung viec cu, de mot phim
+  # bam khong bao gio "khong lam gi".
+  case "$kind:$mode" in
+    photo:screen) exec bash "$ACTIONS" shot ;;
+    photo:*)      exec bash "$ACTIONS" snip ;;
+    video:screen) exec bash "$ACTIONS" rec ;;
+    *)            exec bash "$ACTIONS" rec-area ;;
+  esac
+}
+
+shot_crop() {                      # $1-$4 = x y w h (physical px), $5 = "cursor" -> anh co con tro
+  local x=${1:-} y=${2:-} w=${3:-} h=${4:-} src="$CAP_DIR/freeze.png" F v
+  [[ ${5:-} == cursor ]] && src="$CAP_DIR/freeze-cursor.png"
+  for v in "$x" "$y" "$w" "$h"; do
+      [[ $v =~ ^[0-9]+$ ]] || { notify "Screenshot" "vung chon khong hop le - xem $LOG"; return 1; }
+  done
+  (( w > 0 && h > 0 )) || { notify "Screenshot" "vung chon rong"; return 1; }
+  mkdir -p "$PIC"
+  F="$PIC/$(date +%F_%H-%M-%S).png"
+  if ! ffmpeg -v error -y -i "$src" -vf "crop=$w:$h:$x:$y" -frames:v 1 -update 1 "$F"; then
+      notify "Screenshot" "cat anh loi - xem $LOG"; return 1
+  fi
+  wl-copy -t image/png <"$F"
+  notify-send -a swaync -i "$F" "Screenshot" "$F" || true
+}
+
 # Chay slurp va PHAN BIET "nguoi dung bam Esc" voi "slurp that bai".
 # Ban cu gop ca hai thanh `|| exit 0` im lang -> slurp chet cung khong thay gi,
 # ma do dung la truong hop da xay ra. slurp tra ve 1 khi nguoi dung huy, va ma
@@ -352,6 +405,10 @@ case "${1:-}" in
       fi
       ;;
 
+  # --- capture overlay (docs/capture-ui.md §2.2) ---
+  capture-open) capture_open "${2:-area}" "${3:-photo}" ;;
+  shot-crop)    shot_crop "${2:-}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
+
   # --- recording island (docs/capture-ui.md §2.2) ---
   # rec / rec-area o tren van la toggle nhu cu, qua cung cac ham nay.
   rec-start)   rec_alive || rec_start "${2:-}" ;;
@@ -412,7 +469,7 @@ $cal_out"
       ;;
 
   *)
-      echo "usage: actions.sh <snip|shot|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
+      echo "usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
       exit 2
       ;;
 esac
