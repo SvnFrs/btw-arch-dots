@@ -164,6 +164,9 @@ def derive(tok):
         # S7 (2026-09-29): scrim between swaync's blurred album art and its text/buttons.
         # The design system's crust x.70 fails over white art; x.80 (0xcc) passes.
         "art-scrim":       with_alpha(C("ground-deep"), 0xCC),
+        # S6 correction (2026-09-29): swaync draws a collapsed group's cards stacked on top
+        # of each other; translucent cells let the lower cards show through the top one.
+        "cell-solid":      with_alpha(over(with_alpha_factor(C("ink"), 0.04), glass), 0xFF),
     }
     out = {k: to_hex(v) for k, v in d.items()}
     out["tint-end"] = to_hex(d["tint-end"], force_alpha=True)
@@ -190,6 +193,9 @@ REQUIRED = [
     ("pill", "spark", 4.5), ("pill", "danger", 4.5),
     ("cell", "ink", 4.5), ("cell", "ink-muted", 4.5), ("cell", "accent", 4.5),
     ("cell", "danger", 4.5),
+    # S6 correction: the opaque cell of a collapsed notification group, same pairs as cell
+    ("cell-solid", "ink", 4.5), ("cell-solid", "ink-muted", 4.5), ("cell-solid", "accent", 4.5),
+    ("cell-solid", "danger", 4.5),
     ("well", "ink", 4.5), ("well", "ink-muted", 4.5), ("well", "accent", 4.5),
     ("danger-soft", "ink", 4.5), ("danger-soft", "ink-muted", 4.5), ("danger-soft", "danger", 4.5),
     ("halo-1", "on-halo", 4.5), ("halo-2", "on-halo", 4.5),
@@ -212,6 +218,7 @@ def surfaces(tok, der, backdrop):
     return {
         "art": art,
         "pill-on-art": over(D("pill"), art),
+        "cell-solid": D("cell-solid"),        # opaque: the backdrop does not reach it
         "glass": glass,
         "pill": over(D("pill"), glass),
         "cell": cell,

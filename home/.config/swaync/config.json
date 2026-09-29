@@ -21,7 +21,7 @@
   "notification-2fa-action": true,
   "notification-inline-replies": false,
   "image-visibility": "when-available",
-  "transition-time": 350,
+  "transition-time": 150,
   "script-fail-notify": true,
   "widgets": [
     "title",

@@ -6,8 +6,8 @@
  * first (S1), and style nodes only where those fall short. Node and class names are
  * the installed default's (S2, S5).
  *
- * I3 scope: the control centre. Floating notifications keep swaync's default look
- * until I4, so every card rule below is scoped to .control-center.
+ * Card rules are scoped: .control-center cards are cells (I3), .floating-notifications
+ * toasts are glass panels (I4).
  */
 
 /* ── S1: the default's custom properties ─────────────────────────────────── */
@@ -237,6 +237,18 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
 .control-center .notification-row:focus .notification-background .notification {
   background: #cdd6f417;
 }
+/* Text sits 12px × 14px inside the card, like every other cell (§5). The default's
+   4px inner-action padding goes to 0, so the whole card is the hover and click target. */
+.control-center .notification-row .notification-background .notification .notification-default-action {
+  padding: 0;
+  border-radius: 14px;
+}
+.control-center .notification-row .notification-background .notification .notification-default-action .notification-content {
+  padding: 12px 14px;
+}
+.control-center .notification-row .notification-background .notification .notification-alt-actions {
+  padding: 0 14px 12px 14px;
+}
 /* The inner action must not add a second pill on top (§3.4). */
 .control-center .notification-row .notification-background .notification .notification-default-action,
 .control-center .notification-row .notification-background .notification .notification-default-action:hover,
@@ -252,24 +264,28 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   box-shadow: inset 0 0 0 1px #f38ba866;
 }
 
-.control-center .notification .summary {
+.control-center .notification .summary,
+.floating-notifications .notification .summary {
   font-size: 14px;
   font-weight: 600;
   color: #cdd6f4;
 }
-.control-center .notification .body {
+.control-center .notification .body,
+.floating-notifications .notification .body {
   font-size: 14px;
   font-weight: 400;
   color: #a6adc8;
 }
-.control-center .notification .time {
+.control-center .notification .time,
+.floating-notifications .notification .time {
   font-size: 12px;
   font-weight: 400;
   color: #a6adc8;
 }
 
 /* Close: a 24px glass circle that appears on hover. */
-.control-center .close-button {
+.control-center .close-button,
+.floating-notifications .close-button {
   min-width: 24px;
   min-height: 24px;
   border-radius: 9999px;
@@ -281,11 +297,67 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
 }
 .control-center .notification-row:hover .close-button,
 .control-center .notification-group:hover .notification-group-close-button .close-button,
-.control-center .close-button:focus-visible {
+.control-center .close-button:focus-visible,
+.floating-notifications .notification-row:hover .close-button,
+.floating-notifications .close-button:focus-visible {
   opacity: 1;
 }
-.control-center .close-button:hover {
+.control-center .close-button:hover,
+.floating-notifications .close-button:hover {
   background: #cdd6f421;
+}
+
+/* ── floating notifications (I4): each toast is a glass panel ─────────────────
+   The toast window spans the output's height but only the toast's width, so the
+   row's margins are the shadow room: 40px on the left for glass-float, 12px top and
+   right to match the control centre. */
+.floating-notifications .notification-row {
+  margin: 12px 12px 8px 40px;
+}
+.floating-notifications .notification-row .notification-background {
+  padding: 0;
+}
+.floating-notifications .notification-row .notification-background .notification {
+  background-color: transparent;
+  background-image: linear-gradient(165deg, #f5e0dc07, #f5e0dc00 42%), url("assets/glass-grain.png");
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 220px 220px;
+  border: none;
+  border-radius: 26px;
+  padding: 0;
+  box-shadow: 0 30px 60px -20px #08080de6, 0 12px 24px -12px #08080d99, inset 0 1px 0 #f5e0dc29, inset 0 0 0 1px #45475a8c;
+}
+/* Tyler, 2026-09-29: text was too near the border. 18px × 22px clears the 26px corner.
+   The inner action fills the whole toast, so its hover pill has the toast's shape. */
+.floating-notifications .notification-row .notification-background .notification .notification-default-action {
+  padding: 0;
+  border-radius: 26px;
+}
+.floating-notifications .notification-row .notification-background .notification .notification-default-action .notification-content {
+  padding: 18px 22px;
+}
+.floating-notifications .notification-row .notification-background .notification .notification-alt-actions {
+  padding: 0 22px 18px 22px;
+}
+.floating-notifications .close-button {
+  margin: 14px 16px 0 0;
+}
+/* Critical: danger-soft over the glass it replaces, danger-rim instead of the rim. */
+.floating-notifications .notification-row .notification-background .notification.critical {
+  background-image: linear-gradient(#f38ba81f, #f38ba81f),
+                    linear-gradient(165deg, #f5e0dc07, #f5e0dc00 42%), url("assets/glass-grain.png");
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 220px 220px;
+  box-shadow: 0 30px 60px -20px #08080de6, 0 12px 24px -12px #08080d99, inset 0 1px 0 #f5e0dc29, inset 0 0 0 1px #f38ba866;
+}
+
+/* Row enter (DP7). Leave is swaync's transition-time plus Wayfire's fade. */
+@keyframes enh-item-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.notification-row {
+  animation: enh-item-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ── notification groups (S6): the container has no fill; only cards carry the cell.
@@ -300,11 +372,19 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   color: #a6adc8;
   font-size: 12px;
 }
-.control-center .notification-group.collapsed .notification-row .notification {
-  background-color: #cdd6f40a;
-}
+/* S6 correction: a collapsed group draws its cards stacked, the newest (last child)
+   on top. Translucent cells let the lower cards show through it, so the stack is
+   opaque: cell-solid is the cell composited onto the panel. Hover keeps it, since a
+   translucent pill would bring the show-through back. A critical card layers
+   danger-soft over it (ink 8.30, ink-muted 5.39, danger 5.18). */
+.control-center .notification-group.collapsed .notification-row .notification,
 .control-center .notification-group.collapsed:hover .notification-row:not(:only-child) .notification {
-  background-color: #cdd6f417;
+  background-color: #252636;
+  background-image: none;
+}
+.control-center .notification-group.collapsed .notification-row .notification.critical {
+  background-color: #252636;
+  background-image: linear-gradient(#f38ba81f, #f38ba81f);
 }
 
 /* Keyboard focus (DP8: accent = focus). */

@@ -97,6 +97,7 @@ is the token's RGB with alpha × f.
 | `danger-rim` | `#f38ba866` | `danger` ×.40 | 1px ring on critical notifications |
 | `core-gradient` | `linear-gradient(115deg, #fab387, #f5c2e7)` | Switch fill / core at rest | the warm core |
 | `art-scrim` | `#11111bcc` | `ground-deep` (crust), alpha `0xcc` — *added 2026-09-29 (S7)* | the layer between swaync's blurred album art and its text/buttons |
+| `cell-solid` | `#252636` | `cell` composited onto `glass-desktop`, alpha 1 — *added 2026-09-29 (S6 correction)* | the cards of a **collapsed** notification group only; gate pairs as `cell`: ink 10.30, ink-muted 6.69, accent 7.34, danger 6.44 |
 
 *(S7, 2026-09-29)* `art-scrim` replaces the design system's crust ×.70 scrim, which fails over white
 album art: ink-muted 3.15, ink on pill 4.08. At `0xcc`, ink-muted is 4.57 and ink on pill is 5.69
@@ -344,8 +345,8 @@ the installed default has them, override those first and style nodes only where 
 | `.widget-volume scale trough` | `min-height: 10px; border-radius: 9999px; background: {{well}}; box-shadow: {{well-shadow}};` · `highlight` `background: {{accent}}; border-radius: 9999px;` · `slider` `min-width: 18px; min-height: 18px; margin: -4px; border-radius: 9999px;` + the knob gradient/shadow above. A negative margin is allowed only while `min-size + 2 × margin ≥ 0` (18 − 8 = 10): the old `-10px` on an 18px knob is what produced "GtkGizmo (slider) reported min width -2" |
 | volume label | `config.json` `"label"` → `glyph.volume` (U+F028), colour `ink-muted` |
 | `.widget-mpris` player | ~~art radius 12 (config `image-radius` 12 already), buttons = glass buttons, 34px circles~~ *(corrected 2026-09-29, S7)* In 0.12.6 the player is `.widget-mpris .widget-mpris-player`, with a blurred album-art backdrop (`.mpris-background`) and `.mpris-overlay` over it; today's `.widget-mpris player` selector matches nothing. Keep the blurred backdrop, radius 14. The layer between the art and the text/buttons (`.mpris-overlay`, or whichever node the GTK Inspector shows there in I3) is `{{art-scrim}}`. Buttons (`.mpris-overlay > box > button`, `.widget-mpris > box > button`) are 34px glass circles (`pill`); their glyphs are `ink`, never `ink-muted` (§3.4) |
-| `.notification-group` *(added 2026-09-29, S6)* | container `background: transparent`; only the cards inside carry the cell. Group headers `ink-muted`, 12px. The group close button is the glass close button. Collapsed-stack cards keep the cell fill (never `pill` over `cell`). `.notification-group.critical` adds **no** `danger-soft` to the container |
-| `.notification-background` / `.notification` | cell in the centre; as a toast: glass panel (same fill, sheen, grain, rim, shadow as `.control-center`), radius 26, padding 14 |
+| `.notification-group` *(added 2026-09-29, S6)* | container `background: transparent`; only the cards inside carry the cell. Group headers `ink-muted`, 12px. The group close button is the glass close button. Collapsed-stack cards keep the cell fill (never `pill` over `cell`). `.notification-group.critical` adds **no** `danger-soft` to the container. *(corrected 2026-09-29, Tyler chose option A)* ~~Collapsed-stack cards keep the cell fill~~: swaync draws a collapsed group's cards stacked, the newest (last child) on top. Translucent cells let the lower cards show through it; the critical card's rim crossed the top card's text (I3 screenshot). So **every card of a collapsed group is `{{cell-solid}}`**. Hover keeps `cell-solid`, because a translucent pill would bring the show-through back. A critical card there layers `danger-soft` over `cell-solid` (ink 8.30, ink-muted 5.39, danger 5.18; not in the gate) |
+| `.notification-background` / `.notification` | cell in the centre; as a toast: glass panel (same fill, sheen, grain, rim, shadow as `.control-center`), radius 26, ~~padding 14~~ *(changed 2026-09-29, Tyler: "texts are too near the border")* text padding **18px 22px**, which clears the 26px corner. The toast's inner action fills the whole toast (radius 26), so its hover pill has the toast's shape. The close button sits 14px/16px in. Centre cards: text padding **12px 14px** as for every cell (I3 had missed it and left swaync's default 4px) |
 | `.notification-background:hover` (centre) | `background: {{pill}}` — replaces the cell fill (§3.4); 180ms `ease-out-expo` |
 | *I3 implementation notes (2026-09-29)* | The cell goes on `.notification` (the visible card, where `.critical` also lives), so hover, focus and critical all **replace** one node's fill; `.notification-background` is only the 8px gap. The default's inner `.notification-default-action:hover` and the row's `:focus` fill (`--noti-bg-focus`) are set transparent, so no second pill stacks on the card. Other choices within §5's intent: `--mpris-album-art-shadow: none` (no drop shadow on glass); the empty-list placeholder is `ink-muted` at full opacity (the default's opacity .5 would drop below 4.5:1); keyboard focus gets a 2px `accent` outline (DP8). Floating toasts keep swaync's default look until I4 |
 | `.summary` | Demi Bold 14px `ink` · `.body` Regular 14px `ink-muted` · `.time` 12px `ink-muted` |
@@ -370,6 +371,20 @@ file if used.
 **config.json:** `transition-time` 350 → 150 (DP7); `"button-text": "Clear all"`, dnd `"text": "Do not disturb"`
 (sentence case); `widget-config.volume.label` per the table. Nothing else changes. The
 `control-center-margin-*` values stay 12 (S3).
+
+**I4 record (2026-09-29).**
+- Toasts are glass panels. Their row margins `12px 12px 8px 40px` are the shadow room: the toast
+  window spans the output's height but only the toast's width (`notificationWindow.vala`), so
+  `glass-float` needs the 40px on the left. The fallback single shadow layer was not needed.
+- `.notification-row` enters with `enh-item-in` (280ms `ease-out-expo`). `transition-time` is 150.
+- *(added by Tyler)* The control centre, `type "panel"`, used to close in one frame. It now fades
+  too: `fade_enabled_for = type is "overlay" | app_id is "swaync-control-center"` (`|` is the
+  matcher's top-level OR, `condition_parser.cpp:54-60`; `&` binds tighter). With
+  `fade_duration = 150ms circle`, both were written in place and confirmed over IPC.
+- The recorded close ramp is 10 frames over 139 ms and 9 over 159 ms (was one frame). The largest
+  frame gap during a fade-out is 20 ms, which is the recorder's own ~50–60 fps capture rate, so
+  there is no sign of dropped frames on the iGPU. The recorder cannot prove 165 Hz. One 39.6 ms
+  gap appeared on the first open after a CSS reload. The full-screen fade is kept.
 
 **wayfire.ini:** `[animate] fade_duration` 350 → 150 (DP7). Wayfire reloads the ini on save.
 This is the one change outside rofi/swaync; it also affects every other overlay-layer surface.
