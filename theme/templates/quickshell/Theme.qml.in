@@ -1,0 +1,93 @@
+pragma Singleton
+import QtQuick
+import Quickshell
+
+// Enhalation tokens for Quickshell (docs/capture-ui.md §2.1). Every value comes from the
+// oracle as the same CSS string rofi and swaync get; the helpers below only change format
+// (Qt wants #AARRGGBB, integers and bezier lists), never colour.
+Singleton {
+    function css(hex) {                                  // "#rrggbb" / "#rrggbbaa" → color
+        const h = hex.slice(1);
+        const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
+        return Qt.rgba(parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255,
+                       parseInt(h.slice(4, 6), 16) / 255, a);
+    }
+    function bezier(s) {                                 // "cubic-bezier(a, b, c, d)" → spline
+        const n = s.match(/-?[\d.]+/g).map(Number);
+        return [n[0], n[1], n[2], n[3], 1, 1];
+    }
+    function shadow(s) {                                 // CSS box-shadow list → layers
+        return s.split(/,\s*(?![^(]*\))/).map(layer => {
+            const p = layer.trim().split(/\s+/);
+            return { x: parseFloat(p[0]), y: parseFloat(p[1]), blur: parseFloat(p[2]),
+                     spread: parseFloat(p[3]), color: css(p[4]) };
+        });
+    }
+    // CSS linear-gradient(<deg>) line for a w×h box: [x1, y1, x2, y2].
+    function gradientLine(deg, w, h) {
+        const t = deg * Math.PI / 180, dx = Math.sin(t), dy = -Math.cos(t);
+        const len = Math.abs(w * dx) + Math.abs(h * dy);
+        return [w / 2 - dx * len / 2, h / 2 - dy * len / 2, w / 2 + dx * len / 2, h / 2 + dy * len / 2];
+    }
+
+    readonly property string font: "CartographCF Nerd Font"
+
+    // colour
+    readonly property color ink: css("{{ink}}")
+    readonly property color inkMuted: css("{{ink-muted}}")
+    readonly property color accent: css("{{accent}}")
+    readonly property color spark: css("{{spark}}")
+    readonly property color danger: css("{{danger}}")
+    readonly property color dangerSoft: css("{{danger-soft}}")
+    readonly property color dangerRim: css("{{danger-rim}}")
+    readonly property color onHalo: css("{{on-halo}}")
+    readonly property color pill: css("{{pill}}")
+    readonly property color pillHover: css("{{pill-hover}}")
+    readonly property color pillTop: css("{{pill-top}}")
+    readonly property color well: css("{{well}}")
+    readonly property color rim: css("{{rim}}")
+    readonly property color glassEdge: css("{{glass-edge}}")
+    readonly property color tint: css("{{tint}}")
+    readonly property color tintEnd: css("{{tint-end}}")
+    readonly property color glassDesktop: css("{{glass-desktop}}")
+
+    // depth
+    readonly property var glassFloat: shadow("{{glass-float}}")
+    readonly property real opacityDisabled: {{opacity-disabled}}
+
+    // motion
+    readonly property int durPress: parseInt("{{dur-press}}")
+    readonly property int durHover: parseInt("{{dur-hover}}")
+    readonly property int durExit: parseInt("{{dur-exit}}")
+    readonly property int durEnter: parseInt("{{dur-enter}}")
+    readonly property int durSlide: parseInt("{{dur-slide}}")
+    readonly property var easeOutExpo: bezier("{{ease-out-expo}}")
+    readonly property var easeSpring: bezier("{{ease-spring}}")
+    readonly property var easePress: bezier("{{ease-press}}")
+    readonly property var easeExit: bezier("{{ease-exit}}")
+
+    // shape and space
+    readonly property int radiusSm: parseInt("{{radius-sm}}")
+    readonly property int radiusLg: parseInt("{{radius-lg}}")
+    readonly property int space2: parseInt("{{space-2}}")
+    readonly property int space3: parseInt("{{space-3}}")
+    readonly property int space4: parseInt("{{space-4}}")
+
+    // recording island (§4); core-stop.png is baked at stopW × stopH
+    readonly property int islandW: {{island-w}}
+    readonly property int islandPad: {{island-pad}}
+    readonly property int islandGap: {{island-gap}}
+    readonly property int islandSideW: {{island-side-w}}
+    readonly property int stopW: {{island-stop-w}}
+    readonly property int stopH: {{island-stop-h}}
+
+    // glyphs
+    readonly property string gVolume: "{{glyph.volume}}"
+    readonly property string gStop: "{{glyph.stop}}"
+    readonly property string gDelete: "{{glyph.delete}}"
+    readonly property string gPlay: "{{glyph.play}}"
+    readonly property string gCheck: "{{glyph.check}}"
+    readonly property string gCopy: "{{glyph.copy}}"
+    readonly property string gWarn: "{{glyph.warn}}"
+    readonly property string gFolder: "{{glyph.folder-open}}"
+}

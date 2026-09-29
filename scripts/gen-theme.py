@@ -31,16 +31,28 @@ TEMPLATES = os.path.join(REPO, "theme", "templates")
 OUTPUTS = {
     "rofi/launcher.rasi.in": "home/.config/rofi/config/launcher.rasi",
     "swaync/style.css.in": "home/.config/swaync/style.css",
+    "quickshell/Theme.qml.in": "home/.config/quickshell/enhalation/Theme.qml",
 }
-ASSET_DIR = "home/.config/swaync/assets"
+# Baked images (enhalation_ref.bake) and where each is written.
+ASSETS = {
+    "home/.config/swaync/assets": ("glass-grain.png", "switch-on.png"),
+    "home/.config/quickshell/enhalation/assets": ("glass-grain.png", "shutter-60.png", "core-stop.png"),
+}
 
-# §6: the only private-use code points a template may name.
+# The only private-use code points a template may name: enhalation-desktop.md §6, plus the
+# recording island's (capture-ui.md §4; folder-open is the preview's "Show in folder").
 GLYPHS = {
     "launch": 0xF135,
     "windows": 0xF2D0,
     "clip": 0xF0EA,
     "delete": 0xF1F8,
     "volume": 0xF028,
+    "stop": 0xF04D,
+    "play": 0xF04B,
+    "check": 0xF00C,
+    "copy": 0xF0C5,
+    "warn": 0xF071,
+    "folder-open": 0xF07C,
 }
 
 PLACEHOLDER = re.compile(r"\{\{([^{}]*)\}\}")
@@ -104,7 +116,8 @@ def build():
                  "\n".join(f"  {b:6} {s:12} {t:12} {r:5.2f} < {need}" for b, s, _, t, r, need, _ in bad))
     values = {k: str(v) for k, v in {**tok, **der}.items()}
     texts = {out: render(src, values) for src, out in OUTPUTS.items()}
-    images = {os.path.join(ASSET_DIR, name): img for name, img in ref.bake(tok, der).items()}
+    baked = ref.bake(tok, der)
+    images = {os.path.join(d, name): baked[name] for d, names in ASSETS.items() for name in names}
     minima = {}
     for _b, surface, _hex, _t, r, _need, verdict in rows:
         if verdict != "forbidden":

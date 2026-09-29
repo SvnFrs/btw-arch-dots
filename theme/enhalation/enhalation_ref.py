@@ -179,6 +179,10 @@ def derive(tok):
     float_layers = tok["glass-float"].split(", ")
     assert len(float_layers) == 2, "glass-float is expected to have two layers"
     out["stack-shadow"] = float_layers[1]
+    # capture-ui §4: the island's geometry, shared with the baked core-stop.png.
+    out.update({"island-w": str(ISLAND_W), "island-pad": str(ISLAND_PAD),
+                "island-gap": str(ISLAND_GAP), "island-side-w": str(ISLAND_SIDE_W),
+                "island-stop-w": str(ISLAND_STOP_W), "island-stop-h": str(ISLAND_STOP_H)})
     # DP9: the same two gradients in rofi's dialect. The panel ramps linearly from
     # tint-over-glass to glass-desktop over the first ROFI_SHEEN_END intervals, then holds.
     stops = [to_hex(lerp(d["tint-over-glass"], glass, min(k, ROFI_SHEEN_END) / ROFI_SHEEN_END),
@@ -309,6 +313,39 @@ def css_linear_gradient(w, h, angle_deg, stops):
         return stops[-1][1]
     return at
 
+# docs/capture-ui.md §4: the recording island's fixed geometry. The Stop button is baked at
+# exactly this size (core-stop.png), so the QML reads these numbers from Theme.qml too.
+ISLAND_W, ISLAND_PAD, ISLAND_GAP = 368, 16, 8
+ISLAND_SIDE_W = 132                   # Discard / Delete it slot: "Delete it" needs ~130px at 14px
+ISLAND_STOP_H = 42
+ISLAND_STOP_W = ISLAND_W - 2 * ISLAND_PAD - ISLAND_GAP - ISLAND_SIDE_W     # 196
+
+def coverage(px, py, w, h, r):
+    """Share of pixel (px, py) inside a w×h rectangle with corner radius r, 4×4 supersampled."""
+    inside = 0
+    for j in range(4):
+        for i in range(4):
+            x, y = px + (i + 0.5) / 4, py + (j + 0.5) / 4
+            qx = max(abs(x - w / 2) - (w / 2 - r), 0.0)
+            qy = max(abs(y - h / 2) - (h / 2 - r), 0.0)
+            inside += qx * qx + qy * qy <= r * r
+    return inside / 16
+
+def bake_core(tok, w, h, radius, grain_px, strength):
+    """capture-ui §4.4: the warm core (115° core-gradient + overlay grain, the switch-on.png
+    formula) with its rounded shape baked into alpha. Quickshell has no blend modes either."""
+    tw, th, tile = read_pgm()
+    grad = css_linear_gradient(w, h, CORE_DEG,
+                               [(0.0, parse_hex(tok["halo-1"])), (1.0, parse_hex(tok["halo-2"]))])
+    k = tw / grain_px                                  # nearest-neighbour sample of the scaled tile
+    buf = bytearray()
+    for y in range(h):
+        for x in range(w):
+            n = tile[(int(y * k) % th) * tw + (int(x * k) % tw)] / 255
+            r, g, b, a = blend_over(grad(x, y), n, strength)
+            buf += bytes((q8(r), q8(g), q8(b), q8(a * coverage(x, y, w, h, radius))))
+    return (w, h, bytes(buf))
+
 SWITCH_W, SWITCH_H = 56, 32           # Enhalation switch geometry (bundle.css .enh-switch)
 GLASS_TILE = 220                      # .enh-glass__grain background-size: 220px (1:1)
 SWITCH_GRAIN_SIZE = 160               # .enh-switch__fill::after background-size: 160px
@@ -338,6 +375,11 @@ def bake(tok, der):
             n = grey(int(x * k), int(y * k))
             buf += bytes(q8(v) for v in blend_over(grad(x, y), n, s))
     images["switch-on.png"] = (SWITCH_W, SWITCH_H, bytes(buf))
+
+    # 3) capture-ui §4.4: the shutter (C3) and the island's "Stop and save" button, grain .22
+    s = float(tok["grain-strength"])
+    images["shutter-60.png"] = bake_core(tok, 60, 60, 30, 160, s)
+    images["core-stop.png"] = bake_core(tok, ISLAND_STOP_W, ISLAND_STOP_H, 12, 180, s)
     return images
 
 def png_bytes(w, h, rgba):

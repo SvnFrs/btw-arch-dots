@@ -172,6 +172,12 @@ own shape (clicks elsewhere go to the apps underneath).
 5. **Failed**: like Saved but U+F071 in `danger`, "Recording failed", "Open log" (`xdg-open` the
    actions log). Replaces today's "KHOI DONG THAT BAI" notification.
 
+*(C1 notes)* "Show in folder" uses U+F07C (folder-open, as drawn in the preview; §4 names no
+glyph). The island exposes test hooks next to `ping` (`qs -c enhalation ipc call rec expand|arm|collapse`)
+so the click-only states can be screenshotted. The Discard trash glyph on a hovered glass button is
+`danger` on `pill-hover` over glass: 4.36:1 over white. That is fine for an icon (WCAG 1.4.11 asks
+3:1), but it is not a text pair.
+
 ### 4.2 Motion
 - Collapsed ↔ expanded: width, height and radius animate **together**, 420 ms `ease-spring` open
   / 280 ms `ease-out-expo` close. Contents crossfade 180 ms, starting 120 ms into the open.
@@ -191,6 +197,19 @@ Extend `enhalation_ref.py` with `bake_core(w, h, radius, grain_px, strength)`: t
 shape baked into alpha (4×4 supersampled coverage). Outputs: `shutter-60.png` (60×60, circle, grain
 160 px, .22) and `core-stop.png` (the Stop button's exact size at the island's fixed width,
 radius 12, grain 180 px, .22). Add their digests to the `--digest` output and to this file.
+
+*(C1, 2026-09-29)* Digests (raw RGBA, `enhalation_ref.py --digest`):
+
+| image | size | raw-RGBA sha256 | means |
+|---|---|---|---|
+| `shutter-60.png` | 60×60 | `d55467588443da31eca8bda21967983a48d940703a0f2709522e07b0e0a41efb` | `[248.2, 192.86, 189.68, 200.3]` |
+| `core-stop.png` | 196×42 | `9fe925fc977c73b6e2d988aabcc238171a7fb16e1d5f317419f0545a20f41435` | `[248.19, 192.82, 189.65, 251.16]` |
+
+Mean alpha checks the shape: 200.3/255 = 0.785 ≈ π/4 for the circle; 0.985 for the rectangle
+minus four 12 px corners. **Geometry:** content width is 368 − 2×16 = 336. The side slot
+(Discard / Delete it) is **132 px**, because "Delete it" needs ~130 px at 14 px Cartograph. That
+leaves Stop at **196×42** (the preview drew ~218). The numbers live in the oracle and reach QML as
+`island-*` derived tokens, so the baked image and the layout cannot drift apart.
 
 ## 5. Contrast — NORMATIVE additions to the gate
 Every text pair above is already in the gate (glass, pill, well, danger-soft with ink / ink-muted /
@@ -246,7 +265,8 @@ unrelated `actions.sh` strings are untouched.
 - `qs -c <name>` runs `…/quickshell/<name>/shell.qml`, and `-c` is accepted by `qs ipc` too
   (`qs --help`, `qs ipc --help` on 0.3.1). VERIFIED.
 - Window input mask: windows have a `mask` region property (source, `proxywindow.hpp:58`). Behaviour: C1.
-- `FileView` on tmpfs: see §2.2 (Tyler's source read). Behaviour: C1.
+- `FileView` on tmpfs: see §2.2 (Tyler's source read). **VERIFIED at C1:** each tmp + `mv` replace
+  of `rec.json` was picked up (five states in a row), and deleting it hid the island (idle).
 - `ffmpeg`: VERIFIED (§2.3).
 - wf-recorder and the cursor: inconclusive at C0 (the pointer was hidden, the region static); Tyler
   runs a 3 s test with the mouse moving.
