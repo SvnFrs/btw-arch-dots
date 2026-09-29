@@ -4,9 +4,10 @@ import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 
-// docs/capture-ui.md §3: the capture overlay, one per output (shell.qml's Variants). It shows
-// the freeze actions.sh took *before* it mapped (what you select is what you get), and on the
-// shutter hands physical px to `actions.sh shot-crop`. It never runs grim itself.
+// docs/capture-ui.md §3: the capture overlay, one per output (shell.qml's Variants). Photo shows
+// the freeze actions.sh took *before* it mapped (what you select is what you get) and hands
+// physical px to `actions.sh shot-crop`; Video shows the live desktop and hands a global logical
+// geometry to `actions.sh rec-start`. It never runs grim or wf-recorder itself.
 PanelWindow {
     id: ov
 
@@ -19,10 +20,18 @@ PanelWindow {
     readonly property string dir: Quickshell.env("XDG_RUNTIME_DIR") + "/capture"
     readonly property string actions: Quickshell.env("HOME") + "/.config/swaync/actions.sh"
     readonly property bool area: capture.mode === "area"
+    readonly property bool win: capture.mode === "window"
+    readonly property bool video: capture.kind === "video"
 
     property rect sel: Qt.rect(0, 0, 0, 0)   // logical px
     property bool dragged: false             // the hint leaves after the first drag
     property var pending: []
+    // Window mode (§2.4): capture.views is top-most first, geometry in logical px on this output.
+    property int hovered: -1
+    readonly property var view: win && hovered >= 0 && hovered < capture.views.length ? capture.views[hovered] : null
+    readonly property rect winRect: view ? Qt.rect(view.geometry.x, view.geometry.y, view.geometry.w, view.geometry.h)
+                                         : Qt.rect(0, 0, 0, 0)
+    readonly property rect shown: area ? sel : winRect     // what the scrim leaves clear
 
     // §3: overlay layer, exclusive keyboard focus while open, full-screen on its output.
     anchors { top: true; bottom: true; left: true; right: true }
@@ -37,8 +46,9 @@ PanelWindow {
     Connections {
         target: ov.capture
         function onSelectRequested(r) { if (ov.active) ov.sel = r; }
+        function onPickRequested(p) { if (ov.active) ov.hovered = ov.viewAt(p.x, p.y); }
         function onShootRequested() { if (ov.active) ov.shoot(); }
-        function onPlanRequested() { if (ov.active) ov.capture.plan = ov.cropArgs().join(" "); }
+        function onPlanRequested() { if (ov.active) ov.capture.plan = ov.shutterArgs().join(" "); }
     }
 
     // Area starts from the session's last area, else a centred 640×360; Screen is the output.
@@ -48,21 +58,40 @@ PanelWindow {
         sel = last.width > 0 ? last
             : Qt.rect(Math.round((W - 640) / 2), Math.round((H - 360) / 2), 640, 360);
         dragged = false;
+        hovered = capture.views.length ? 0 : -1;          // Window starts on the top-most view
         keys.forceActiveFocus();
     }
-    function shootRect() { return area ? sel : Qt.rect(0, 0, modelData.width, modelData.height); }
+    function viewAt(x, y) {
+        const vs = capture.views;
+        for (let i = 0; i < vs.length; i++) {
+            const g = vs[i].geometry;
+            if (x >= g.x && x < g.x + g.w && y >= g.y && y < g.y + g.h) return i;
+        }
+        return -1;
+    }
+    function shootRect() {
+        return area ? sel : win ? winRect : Qt.rect(0, 0, modelData.width, modelData.height);
+    }
     // logical → physical px (§2.3); actions.sh crops the freeze with ffmpeg
     function cropArgs() {
         const r = shootRect();
         return ["shot-crop"].concat([r.x, r.y, r.width, r.height].map(v => String(Math.round(v * dpr))),
                                     capture.pointer ? ["cursor"] : []);
     }
+    // wf-recorder -g takes layout (global logical) coordinates, like slurp prints; Screen = none.
+    function recArgs() {
+        if (capture.mode === "screen") return ["rec-start"];
+        const r = shootRect();
+        return ["rec-start", Math.round(modelData.x + r.x) + "," + Math.round(modelData.y + r.y) + " "
+                             + Math.round(r.width) + "x" + Math.round(r.height)];
+    }
+    function shutterArgs() { return video ? recArgs() : cropArgs(); }
     function shoot() {
         const r = shootRect();
         if (r.width < 1 || r.height < 1) return;
         if (area) capture.lastArea = sel;
-        pending = ["bash", actions].concat(cropArgs());
-        capture.open = false;                // leave (150 ms), then crop
+        pending = ["bash", actions].concat(shutterArgs());
+        capture.open = false;                // leave (150 ms) first, so Video never records the overlay
         cropLater.restart();
     }
     Timer { id: cropLater; interval: Theme.durExit + 30; onTriggered: Quickshell.execDetached(ov.pending) }
@@ -89,21 +118,21 @@ PanelWindow {
             }
         }
 
-        Image {                                  // the freeze (Pointer ON shows the one with the cursor)
+        Image {                                  // the freeze (Pointer ON shows the one with the cursor); Video: none
             anchors.fill: parent
-            source: ov.active ? "file://" + ov.dir + (ov.capture.pointer ? "/freeze-cursor.ppm" : "/freeze.ppm")
+            source: ov.active && !ov.video ? "file://" + ov.dir + (ov.capture.pointer ? "/freeze-cursor.ppm" : "/freeze.ppm")
                                 + "?s=" + ov.capture.serial : ""
             cache: false
             smooth: false
         }
 
-        // scrim outside the selection (Area); Screen takes the whole output, so none
+        // scrim outside the selection (Area) or the picked window (Window); Screen takes the whole output
         Repeater {
-            model: ov.area ? 4 : 0
+            model: ov.area || ov.win ? 4 : 0
             Rectangle {
                 required property int index
                 color: Theme.captureScrim
-                readonly property rect s: ov.sel
+                readonly property rect s: ov.shown
                 x: index === 3 ? s.x + s.width : 0
                 y: index === 0 ? 0 : index === 1 ? s.y + s.height : s.y
                 width: index === 2 ? s.x : index === 3 ? parent.width - (s.x + s.width) : parent.width
@@ -144,11 +173,37 @@ PanelWindow {
             }
         }
 
-        // pointer: drag to select, inside moves, handles/edges resize (24 px hit targets)
+        // Window mode: 2 px accent outline on the picked view, glass app_id chip at its top-left
+        Rectangle {
+            visible: ov.win && ov.view !== null
+            x: ov.winRect.x; y: ov.winRect.y; width: ov.winRect.width; height: ov.winRect.height
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.accent
+        }
+        GlassPanel {
+            floating: false
+            visible: ov.win && ov.view !== null
+            radius: height / 2
+            width: appText.implicitWidth + 24
+            height: 26
+            x: ov.winRect.x + 10
+            y: ov.winRect.y + 10
+            Text {
+                id: appText
+                anchors.centerIn: parent
+                text: ov.view ? ov.view.app_id : ""
+                font.family: Theme.font; font.pixelSize: 12
+                color: Theme.ink
+            }
+        }
+
+        // pointer. Area: drag to select, inside moves, handles/edges resize (24 px hit targets).
+        // Window: hover picks the top-most view under the pointer, click captures it.
         MouseArea {
             id: pick
             anchors.fill: parent
-            enabled: ov.active && ov.area
+            enabled: ov.active && (ov.area || ov.win)
             hoverEnabled: true
             property string zone: ""
             property string hoverZone: ""
@@ -168,14 +223,21 @@ PanelWindow {
             }
             function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-            cursorShape: ({ tl: Qt.SizeFDiagCursor, br: Qt.SizeFDiagCursor, tr: Qt.SizeBDiagCursor,
+            cursorShape: ov.win ? (ov.hovered >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor) :
+                         ({ tl: Qt.SizeFDiagCursor, br: Qt.SizeFDiagCursor, tr: Qt.SizeBDiagCursor,
                             bl: Qt.SizeBDiagCursor, l: Qt.SizeHorCursor, r: Qt.SizeHorCursor,
                             t: Qt.SizeVerCursor, b: Qt.SizeVerCursor,
                             move: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor })[pressed ? zone : hoverZone]
                          ?? Qt.CrossCursor
 
-            onPressed: (m) => { zone = zoneAt(m.x, m.y); start = Qt.point(m.x, m.y); startSel = ov.sel; }
+            onPressed: (m) => { if (ov.area) { zone = zoneAt(m.x, m.y); start = Qt.point(m.x, m.y); startSel = ov.sel; } }
+            onClicked: (m) => {
+                if (!ov.win) return;
+                ov.hovered = ov.viewAt(m.x, m.y);
+                if (ov.hovered >= 0) ov.shoot();
+            }
             onPositionChanged: (m) => {
+                if (ov.win) { const i = ov.viewAt(m.x, m.y); if (i >= 0) ov.hovered = i; return; }
                 if (!pressed) { hoverZone = zoneAt(m.x, m.y); return; }
                 const W = width, H = height, dx = m.x - start.x, dy = m.y - start.y, s = startSel;
                 let x1 = s.x, y1 = s.y, x2 = s.x + s.width, y2 = s.y + s.height;
@@ -193,6 +255,7 @@ PanelWindow {
                 ov.dragged = true;
             }
             onReleased: {
+                if (!ov.area) return;
                 if (ov.sel.width < 4 || ov.sel.height < 4) ov.sel = startSel;   // a click keeps the area
                 hoverZone = zone;
             }
@@ -202,8 +265,8 @@ PanelWindow {
         GlassPanel {
             id: chip
             floating: false
-            visible: ov.sel.width > 0
             readonly property rect r: ov.shootRect()
+            visible: r.width > 0
             radius: height / 2
             width: sizeText.implicitWidth + 24
             height: 26

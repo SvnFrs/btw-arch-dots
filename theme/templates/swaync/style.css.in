@@ -87,6 +87,7 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   color: {{ink}};
 }
 .widget-title > button,
+.widget-buttons-grid flowboxchild > button,
 .widget-mpris > box > button,
 .widget-mpris .widget-mpris-player .mpris-overlay > box > button {
   background: {{pill}};
@@ -101,15 +102,31 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   font-size: 13px;
 }
 .widget-title > button:hover,
+.widget-buttons-grid flowboxchild > button:hover,
 .widget-mpris > box > button:hover,
 .widget-mpris .widget-mpris-player .mpris-overlay > box > button:hover {
   background: {{pill-hover}};
 }
 .widget-title > button:active,
+.widget-buttons-grid flowboxchild > button:active,
 .widget-mpris > box > button:active,
 .widget-mpris .widget-mpris-player .mpris-overlay > box > button:active {
   transform: scale(0.972);
   box-shadow: inset 0 1px 3px {{well}};
+}
+
+/* ── buttons-grid: Screenshot and Record (capture-ui §6). Glass buttons straight on the
+   panel, like Clear all: a pill inside a cell would stack (§3.4). ──────────────────── */
+.widget-buttons-grid {
+  background: transparent;
+  padding: 0;
+}
+.widget-buttons-grid flowboxchild {
+  padding: 0 4px;
+}
+.widget-buttons-grid flowboxchild > button {
+  padding: 10px 14px;
+  font-size: 14px;
 }
 
 /* ── cells: DND and volume (14 = 26 − 12) ────────────────────────────────── */

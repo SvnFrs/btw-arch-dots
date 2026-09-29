@@ -10,8 +10,6 @@ Item {
     property string mode: "area"
     property string kind: "photo"
     property bool pointer: false
-    property bool windowReady: false    // Window mode arrives in C4
-    property bool videoReady: false     // Video arrives in C4
     signal modePicked(string key)
     signal kindPicked(string key)
     signal pointerToggled()
@@ -45,7 +43,7 @@ Item {
             options: [
                 { key: "area", glyph: Theme.gArea, label: "Area" },
                 { key: "screen", glyph: Theme.gScreen, label: "Screen" },
-                { key: "window", glyph: Theme.gWindow, label: "Window", enabled: bar.windowReady }
+                { key: "window", glyph: Theme.gWindow, label: "Window" }
             ]
             onPicked: (key) => bar.modePicked(key)
         }
@@ -94,7 +92,7 @@ Item {
             current: bar.kind
             options: [
                 { key: "photo", glyph: Theme.gPhoto, label: "Photo" },
-                { key: "video", glyph: Theme.gVideo, label: "Video", enabled: bar.videoReady }
+                { key: "video", glyph: Theme.gVideo, label: "Video" }
             ]
             onPicked: (key) => bar.kindPicked(key)
         }

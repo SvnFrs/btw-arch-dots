@@ -22,7 +22,7 @@ Launching things and running scripts — the `[command]` section.
 | Super + Esc | logout | `wlogout` |
 | PrtSc | screenshot | `bash ~/.config/swaync/actions.sh capture-open area photo` |
 | Super + Shift + S | screenshot interactive | `bash ~/.config/swaync/actions.sh snip` |
-| Super + PrtSc | recording | `bash ~/.config/swaync/actions.sh rec` |
+| Super + PrtSc | recording | `bash ~/.config/swaync/actions.sh capture-open area video` |
 | Shift + Super + PrtSc | recording interactive | `bash ~/.config/swaync/actions.sh rec-area` |
 | Vol + | volume up | `bash ~/.config/swaync/actions.sh vol-up` *(repeats)* |
 | Vol − | volume down | `bash ~/.config/swaync/actions.sh vol-down` *(repeats)* |

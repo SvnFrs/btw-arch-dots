@@ -27,6 +27,7 @@
     "title",
     "dnd",
     "volume",
+    "buttons-grid",
     "mpris",
     "notifications"
   ],
@@ -42,6 +43,13 @@
     "volume": {
       "label": "",
       "show-per-app": false
+    },
+    "buttons-grid": {
+      "buttons-per-row": 2,
+      "actions": [
+        { "label": "  Screenshot", "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area photo" },
+        { "label": "  Record", "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area video" }
+      ]
     },
     "mpris": {
       "image-size": 96,

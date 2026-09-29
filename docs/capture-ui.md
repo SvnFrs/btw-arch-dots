@@ -66,7 +66,7 @@ New `actions.sh` verbs, logged like the rest:
 
 | Verb | Does |
 |---|---|
-| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson) — *(C3 follow-up)* only when the control centre is mapped; `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.ppm` and, with `-c`, to `freeze-cursor.ppm`; then `qs_call capture show <mode> <kind>`. *(C3 follow-up)* Fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) **only** when `qs_call rec ping` fails, so a key press never does nothing and never opens two UIs |
+| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson) — *(C3 follow-up)* only when the control centre is mapped; `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.ppm` and, with `-c`, to `freeze-cursor.ppm`; then `qs_call capture show <mode> <kind>`. *(C3 follow-up)* Fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) **only** when `qs_call rec ping` fails, so a key press never does nothing and never opens two UIs. *(C4)* With `video`, while a recording runs, it runs `rec-stop` instead (Super+PrtSc, §6) |
 | `shot-crop <x> <y> <w> <h> [cursor]` | crop the freeze (physical px) into `$PIC/<date>.png`, `wl-copy -t image/png`, toast **with the image** (`notify-send -i "$F"`) |
 | `rec-start [geometry]` / `rec-stop` / `rec-discard` | today's `rec_start` / `rec_stop` bodies, plus the state file below. `rec-discard` = `rec-stop`, wait for wf-recorder to exit, then delete that one file |
 | `rec` / `rec-area` | unchanged meaning (toggle), now via the verbs above |
@@ -198,6 +198,44 @@ and confirmed over IPC.
   runs `snip`; with `ping` answering but `capture show` failing (stubbed), it logs, notifies, returns
   1, and no overlay or slurp appears.
 
+**C4 record (2026-09-29).**
+- **Video.** No freeze on screen: the overlay is transparent, with the scrim outside the selection.
+  The shutter leaves (150 ms + 30), then runs `rec-start "x,y WxH"` in layout (global logical)
+  coordinates, which is what `wf-recorder -g` and slurp use; Screen runs `rec-start` with no
+  geometry, like `rec`. VERIFIED plans: Area `rec-start 1400,540 640x360`, Screen `rec-start`,
+  Window `rec-start 1270,470 900x500`. VERIFIED end to end with the shutter hook: wf-recorder was up
+  305 ms after the press with `-g 1400,540 640x360`; the file was saved at 640×360 and 2.58 s, and frame 0
+  is the clean desktop (no scrim, frame or toolbar). The file was deleted.
+- **Video still freezes** (unseen): `capture-open` takes the PPM pair for both kinds, so Video →
+  Photo inside the overlay has a backdrop. This is a C4 choice, listed for Tyler.
+- **Window.** `ipc-scripts/capture-views.py` runs **in parallel with the freezes** and writes
+  `capture/views.json` (`[]` if it fails, so a stale list never survives). The list is in focus order (D1) and
+  clipped to the output. Hover picks the top-most view under the pointer, and a click captures it;
+  when the pointer is over no view, the top-most one is picked. VERIFIED with a test window:
+  a pick inside it plans `shot-crop 1270 470 900 500`, and its crop is 900×500, AE = 0 against the PPM;
+  a pick behind it plans the window below; after it closes, it is gone from the list. The outline is exactly
+  2 px `#cba6f7`, and the chip shows the `app_id`.
+- *(evidence)* **FileView `blockLoading` blocks only the first load.** After `reload()`, `text()`
+  returned the **previous** file: the first Window plans used the last open's list, and the
+  second `show` read the right one. Both FileViews now use `blockAllReads` ("also block after
+  `reload()`", quickshell-io.qmltypes 0.3.1). The C3 `freeze-output` read had the same latent bug,
+  hidden because the output never changed.
+- **Super+PrtSc** → `capture-open area video`, written in place and verified over IPC. While
+  recording, that verb stops the recording, so the swaync Record button stops it too. VERIFIED: the
+  press saved the recording and opened no overlay. `docs/keybindings.md` is regenerated.
+- **swaync buttons-grid**: "Screenshot" U+F030 and "Record" U+F03D, two per row, glass pills like
+  Clear all, straight on the panel (a pill inside a cell would stack; brief §3.4). swaync runs
+  `/bin/sh -c "%s"` (a string in `/usr/bin/swaync`), so the commands avoid double quotes and use
+  `~`: `setsid -f bash ~/.config/swaync/actions.sh capture-open area photo|video`. VERIFIED by
+  running the command that way with the control centre open: the centre closed, and the overlay opened
+  with the default plan.
+- **Latency** after C4: 112 ms to mapped (control centre closed).
+- **Log:** 0 warning or error lines after switching through every mode × kind.
+- **Honest limit:** `wf-recorder -g "100,100 101x101"` writes 100×100 — odd sizes round down to
+  even, so an odd-sized Area or Window loses its last row or column of pixels in Video.
+- **Still open (Tyler, from C0):** that Video's pointer is "always recorded" is still INFERRED. The
+  3 s cursor test needs someone moving the mouse.
+
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
 island is not running (`qs_call rec ping` fails), so there is never both.
 
@@ -212,7 +250,8 @@ explicitly but nothing depends on it.
 Pointer toggle ON → crop `freeze-cursor.ppm` instead. Both frames are taken before the overlay maps,
 so the overlay can never be in the picture.
 
-Video mode does not freeze: the overlay shows the live desktop (transparent surface, scrim only
+Video mode does not freeze: the overlay shows the live desktop *(C4: it still takes the freeze pair, unseen, so
+switching Video → Photo while open has a backdrop)* (transparent surface, scrim only
 outside the selection), and on the shutter it leaves (150 ms) **before** `rec-start` runs.
 wf-recorder has no cursor option (VERIFIED: none in `wf-recorder(1)` 0.6.0), so in Video mode the
 Pointer toggle is shown ON and disabled ("always recorded", INFERRED — confirm with a 3 s test).

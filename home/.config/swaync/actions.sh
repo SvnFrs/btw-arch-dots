@@ -299,7 +299,9 @@ rec_exited() {                     # $1 = wf-recorder's exit code
 CAP_DIR="${XDG_RUNTIME_DIR:-/tmp}/capture"
 
 capture_open() {                   # $1 = area|screen|window, $2 = photo|video
-  local mode=${1:-area} kind=${2:-photo} out cc a b
+  local mode=${1:-area} kind=${2:-photo} out cc a b c
+  # Super+PrtSc and the swaync Record button (§6): while recording, the same press stops it.
+  if [[ $kind == video ]] && rec_alive; then rec_stop; return 0; fi
   mkdir -p "$CAP_DIR"
   # ONE python call: the focused output AND whether the control centre is open.
   read -r out cc < <(python3 -c 'from wayfire import WayfireSocket
@@ -310,15 +312,20 @@ print(s.get_focused_output()["name"], int(cc))' 2>/dev/null)
   # the shot). Unknown (python failed) counts as open, to be safe.
   if [[ ${cc:-1} != 0 ]]; then close_panel; sleep 0.25; fi
   printf '%s' "$out" >"$CAP_DIR/freeze-output"
-  if [[ $kind == photo ]]; then
-      # Two shots IN PARALLEL, as PPM (~40 ms each, PNG ~200 ms), both BEFORE the overlay
-      # shows, so the overlay can never be in the picture. freeze-cursor has the pointer.
-      grim -t ppm ${out:+-o "$out"} "$CAP_DIR/freeze.ppm" & a=$!
-      grim -t ppm -c ${out:+-o "$out"} "$CAP_DIR/freeze-cursor.ppm" & b=$!
-      if ! wait "$a" || ! wait "$b"; then
-          notify "Screenshot" "grim failed - see $LOG"; return 1
-      fi
+  # Window mode's view list (§2.4), next to the freezes so it adds no time. A failure
+  # writes [] rather than leaving the last open's windows behind.
+  { python3 "$HOME/.config/ipc-scripts/capture-views.py" >"$CAP_DIR/views.json.tmp" 2>/dev/null \
+      || echo '[]' >"$CAP_DIR/views.json.tmp"
+    mv -f "$CAP_DIR/views.json.tmp" "$CAP_DIR/views.json"; } & c=$!
+  # Two shots IN PARALLEL, as PPM (~40 ms each, PNG ~200 ms), both BEFORE the overlay
+  # shows, so the overlay can never be in the picture. freeze-cursor has the pointer.
+  # Video freezes too (the overlay shows the live desktop), so Video -> Photo works while open.
+  grim -t ppm ${out:+-o "$out"} "$CAP_DIR/freeze.ppm" & a=$!
+  grim -t ppm -c ${out:+-o "$out"} "$CAP_DIR/freeze-cursor.ppm" & b=$!
+  if ! wait "$a" || ! wait "$b"; then
+      notify "Screenshot" "grim failed - see $LOG"; return 1
   fi
+  wait "$c"
   qs_call capture show "$mode" "$kind" >/dev/null && return 0
   # `show` failed. Fall back to the old path only when Quickshell does NOT answer ping — if
   # it answers and show still fails, report it and DON'T fall back: never two UIs at once.
