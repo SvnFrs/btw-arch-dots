@@ -146,6 +146,7 @@ REC_ID="${XDG_RUNTIME_DIR:-/tmp}/swaync-rec-id"
 # co duong nao de island ket mai o "REC".
 REC_STATE="${XDG_RUNTIME_DIR:-/tmp}/capture/rec.json"
 REC_DISCARD="${XDG_RUNTIME_DIR:-/tmp}/capture/discard"
+REC_LOCK="${XDG_RUNTIME_DIR:-/tmp}/capture/rec.lock"
 ACTIONS="$(realpath "${BASH_SOURCE[0]}")"
 
 json_str() { local s=${1//\\/\\\\}; s=${s//\"/\\\"}; printf '"%s"' "$s"; }
@@ -244,14 +245,26 @@ rec_discard() {
 rec_exited() {                     # $1 = exit code cua wf-recorder
   local F started mode geom size dur
   echo "wf-recorder da thoat: code=${1:-?}"
+  # Hai rec-exited co the chay cung luc (cua bash giam sat, va cua rec-stop khi khong
+  # con wf-recorder). Khoa lai, va chi ket thuc khi state van la "recording" — neu
+  # khong, mot lan huy se bi mot "Recording failed" noi theo sau.
+  mkdir -p "$(dirname "$REC_LOCK")"
+  exec 9>"$REC_LOCK"
+  flock 9
+  if [[ ! -e $REC_STATE || $(rec_field state) != recording ]]; then
+      echo "rec-exited: khong con gi de ket thuc (state=[$(rec_field state)])"
+      return 0
+  fi
   F=$(rec_field file); started=$(rec_field started)
   mode=$(rec_field mode); geom=$(rec_field geometry)
   [[ -n $started ]] || started=0
   [[ -n $mode ]] || mode=screen
   if [[ -e $REC_DISCARD ]]; then
-      # Kiem tra read-only TRUOC khi xoa: dung MOT file, nam trong $VID, duoi .mp4.
-      # Khong bao gio glob.
-      if [[ -n $F && $F == "$VID"/*.mp4 && $F != *"/../"* && -f $F ]]; then
+      # Kiem tra read-only TRUOC khi xoa: dung MOT file, nam NGAY trong $VID, duoi .mp4.
+      # Khong bao gio glob. Trong [[ == ]] dau `*` khop ca "/", nen "$VID"/*.mp4 van
+      # cho "$VID/../x.mp4" lot qua; so thu muc da chuan hoa (realpath -m) moi chac.
+      if [[ -n $F && -f $F && $F == *.mp4 \
+            && $(dirname -- "$(realpath -m -- "$F")") == "$(realpath -m -- "$VID")" ]]; then
           ls -l -- "$F"
           rm -f -- "$F"
       else

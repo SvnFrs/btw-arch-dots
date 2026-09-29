@@ -3,6 +3,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Widgets
 
 // docs/capture-ui.md §4: the recording island. It only READS $XDG_RUNTIME_DIR/capture/rec.json,
 // which actions.sh writes (§2.2), and never runs a recorder. Its buttons call actions.sh verbs.
@@ -170,7 +171,12 @@ PanelWindow {
         scale: area.pressed ? 0.972 : 1
         Behavior on color { ColorAnimation { duration: Theme.durHover; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo } }
         Behavior on scale { NumberAnimation { duration: Theme.durPress; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easePress } }
-        Rectangle { x: gb.radius * 0.6; width: parent.width - gb.radius * 1.2; height: 1; color: Theme.pillTop }
+        ClippingRectangle {                       // lit top edge, trimmed by the rounded corners
+            anchors.fill: parent
+            radius: gb.radius
+            color: "transparent"
+            Rectangle { width: parent.width; height: 1; color: Theme.pillTop }
+        }
         Row {
             id: row
             anchors.centerIn: parent

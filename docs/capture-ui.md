@@ -99,13 +99,23 @@ catching real failures was the point of the original fix. The comment explaining
   - With the `discard` flag set, it does a read-only check that the file named in `rec.json` is under
     `$VID` and ends in `.mp4` (pattern match, never a glob). It then `ls -l`s it into the log,
     deletes it, and removes the flag and `rec.json`.
-  - Else `saved`, with size from `stat` and `duration_ms` from `ffprobe`. Else `failed`.
+  - Else, if the file is > 0 bytes **and `ffprobe` reads a duration** (the rule, approved at the C2
+    review: a crash leaves bytes but no moov atom, so it ends `failed`): `saved`, with size from
+    `stat` and `duration_ms` from `ffprobe`. Else `failed`.
+  - *(C2 review, fix 1)* It takes `flock $XDG_RUNTIME_DIR/capture/rec.lock` and finalizes only if
+    `rec.json` exists with state `recording`; otherwise it exits quietly. Two `rec-exited` can race
+    (the supervisor's, and `rec-stop`'s when no recorder is left), and without this a discard could
+    be followed by a "Recording failed". VERIFIED: discard, then a stray `rec-exited` → stays idle.
+  - *(C2 review, fix 2)* The discard path check is
+    `[[ $(dirname -- "$(realpath -m -- "$F")") == "$(realpath -m -- "$VID")" && $F == *.mp4 ]]`, because in
+    `[[ == ]]` a `*` matches `/`, so `"$VID"/*.mp4` let `$VID/../x.mp4` through. VERIFIED against
+    `../`, subdirectories, other extensions and outside paths.
   - The fallback notifications, when the island does not answer `ping`, are sent here.
 - `rec-discard` touches the flag, then `rec-stop`.
 - The island only acts on (and only shows) a `file` under `~/Videos/Recordings/` without `/../`, and a
   `log` equal to the actions log. Anything else in `rec.json` is ignored.
 
-*Three places C2 goes beyond the spec above, for Tyler to confirm:*
+*Three places C2 goes beyond the spec above: all approved at the C2 review (2026-09-29).*
 1. **`saved` also needs `ffprobe` to read a duration.** The spec's literal rule (file > 0 bytes ⇒
    saved) would call a crashed recording "saved": it has bytes but no moov atom. Its conclusion,
    though, is that a crash ends as "failed", and the ffprobe condition is what makes that true.
@@ -297,7 +307,8 @@ unrelated `actions.sh` strings are untouched.
 - **C3** overlay: Area + Screen, Photo; freeze + crop; PrtSc binding. Verify the crop's pixel size
   = selection × scale on both kanshi profiles (`code` on the G5, `laptop` on eDP-1).
 - **C4** Video from the overlay; Window mode; Pointer toggle; swaync buttons; Super+PrtSc.
-- **C5** motion tuning against §3/§4, `dots.conf`, packages list, doctor check, `CLAUDE.md` (the
+- **C5** *(also, from the C2 review)* rotate the actions log **in place** (`cat tmp > "$LOG"`, not
+  `mv`), so long-running children keep writing to the live log. Motion tuning against §3/§4, `dots.conf`, packages list, doctor check, `CLAUDE.md` (the
   actions.sh section: the new verbs and the state file), keybindings doc.
 
 ## 9. INFERRED — check at C0 or the increment that uses it

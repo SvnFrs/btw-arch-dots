@@ -69,23 +69,22 @@ Item {
                 PathLine { x: 0; y: 0 }
             }
         }
+        // The two inset shadows, in CSS order (the first listed paints on top), under the content.
+        Rectangle {                               // rim: inset 0 0 0 1px
+            anchors.fill: parent
+            radius: root.radius
+            color: "transparent"
+            border.width: 1
+            border.color: root.ring
+        }
+        Rectangle {                               // lit top edge: inset 0 1px 0 glass-edge.
+            width: parent.width                   // Full width INSIDE the rounded clip, so the
+            height: 1                             // corners trim it and it follows the curve
+            color: Theme.glassEdge                // instead of overhanging the rim.
+        }
         Item {
             id: body
             anchors.fill: parent
         }
-    }
-
-    Rectangle {                                   // rim: inset 0 0 0 1px
-        anchors.fill: parent
-        radius: root.radius
-        color: "transparent"
-        border.width: 1
-        border.color: root.ring
-    }
-    Rectangle {                                   // lit top edge: inset 0 1px 0 glass-edge
-        x: root.radius * 0.6
-        width: parent.width - root.radius * 1.2
-        height: 1
-        color: Theme.glassEdge
     }
 }
