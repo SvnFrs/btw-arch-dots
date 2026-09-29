@@ -1,6 +1,6 @@
 # Capture UI — screenshot overlay and recording island
 
-**Status:** Proposed · **Date:** 2026-09-29 · **Owner:** Tyler (@SvnFrs)
+**Status:** Accepted at C0 (2026-09-29: Quickshell and the PrtSc rebinding confirmed by Tyler) · **Date:** 2026-09-29 · **Owner:** Tyler (@SvnFrs)
 **Depends on:** `docs/enhalation-desktop.md` (tokens, generator, desktop profile, §3.4 pairing rules).
 **Visual target:** `docs/capture-ui-preview.png` (a browser mock; the desktop behind it is fake).
 
@@ -43,6 +43,9 @@ not have, so Window mode uses Wayfire IPC geometries instead (§2.4).
 Recommendation: Quickshell. The morph and the overlay are the whole point, and both are natural in
 QML. If Tyler declines, stop: this document would need its §2 rewritten for GTK4.
 
+**Confirmed at C0 (2026-09-29).** Installed: `quickshell 0.3.1-1`. It added only `libdwarf` and
+`cpptrace`; `qt6-base`, `qt6-declarative`, `qt6-wayland` and `qt6-svg` 6.11.2 were already present.
+
 ## 2. Architecture — NORMATIVE
 
 ### 2.1 Files
@@ -71,8 +74,18 @@ New `actions.sh` verbs, logged like the rest:
 State file (atomic write: tmp + `mv`): `$XDG_RUNTIME_DIR/capture/rec.json`
 `{"state":"recording|saved|failed","file":"…","started":<epoch ms>,"mode":"screen|area","geometry":"x,y WxH|null","audio":"desktop","size":<bytes|null>,"duration_ms":<int|null>,"log":"…"}`.
 The island watches it (Quickshell `FileView`, watching for changes), only reads it, and never runs
-a recorder itself. `saved` and `failed` are written by `rec-stop` and `rec-start`; the island hides
+a recorder itself.
+*(C0, 2026-09-29, from Tyler's read of quickshell v0.3.1 `src/io/fileview.cpp`)* `FileView` watches the
+file **and** its directory and re-adds the file after a replace, so the tmp + `mv` write is safe
+(no inode trap like `wayfire.ini`'s). `fileChanged` does not reload by itself: use
+`watchChanges: true` + `onFileChanged: reload()`, and treat a missing file (load failed) as idle. `saved` and `failed` are written by `rec-stop` and `rec-start`; the island hides
 6 s after showing them, and the next `rec-start` overwrites the file.
+
+*(C0 decision D2, done in C2, narrowly.)* `run_slurp` treats an Esc as a failure: slurp 1.5.0 exits 1
+and prints `selection cancelled`, but the old guard only accepted an **empty** output as a cancel, so
+Esc on `Super+Shift+S` pops a "slurp loi" notification (seen in the log). Fix: a cancel is exit 1
+**and** output containing `selection cancelled`. Any other exit-1 output still notifies, because
+catching real failures was the point of the original fix. The comment explaining why stays.
 
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
 island is not running (`qs -c enhalation ipc call rec ping` fails), so there is never both.
@@ -82,6 +95,9 @@ The overlay shows `freeze.png` full-screen (a plain `Image`), so what you select
 menus and tooltips included. The selection is in logical px; `shot-crop` receives physical px
 (`× screen scale`). Crop with `ffmpeg -i freeze.png -vf crop=w:h:x:y` (`ffmpeg` should be present
 as a wf-recorder dependency, INFERRED) or ImageMagick if installed — pick one at C0, record it.
+**Picked at C0: `ffmpeg`.** VERIFIED: the `ffmpeg` package provides the `libavcodec.so` that
+`wf-recorder` depends on, so the CLI is present whenever wf-recorder is. ImageMagick is installed
+explicitly but nothing depends on it.
 Pointer toggle ON → crop `freeze-cursor.png` instead. Both frames are taken before the overlay maps,
 so the overlay can never be in the picture.
 
@@ -93,7 +109,15 @@ Pointer toggle is shown ON and disabled ("always recorded", INFERRED — confirm
 ### 2.4 Window mode
 `capture-views.py` (python-wayfire, stdlib otherwise) prints the mapped toplevel views on the
 focused output's current workspace: `id, app_id, title, geometry {x,y,w,h}` in logical px,
-**top-most first** (stacking order; the same rule spread-overview's hit-testing uses). Hover
+**top-most first** (stacking order; the same rule spread-overview's hit-testing uses).
+*(corrected at C0, decision D1)* Wayfire IPC has **no stacking order**: `window-rules/list-views`
+walks `get_all_views()` in creation order (`plugins/ipc-rules/ipc-rules.cpp:70-80`), and
+spread-overview's order comes from the scene graph inside the plugin. `capture-views.py` therefore
+sorts by **focus order**: `always-on-top` first, then `last-focus-timestamp`, newest first. Wayfire
+raises a view when it takes focus, so this matches what is on screen in normal use. The hover
+highlight is exactly the rectangle that gets captured, so a wrong guess shows before the click.
+Geometry is in `geometry` (logical px, relative to the output's current workspace; views on other
+workspaces sit at offsets such as x = 3440). Hover
 highlights the top-most view under the pointer; click captures its rectangle from the freeze.
 Limitation (accepted): it captures the visible pixels, so an overlapping window shows through.
 
@@ -178,7 +202,7 @@ surface (§3 "Hint"), and nothing may use a pair listed in `FORBIDDEN`.
 ## 6. Entry points
 | Input | Action |
 |---|---|
-| PrtSc | `actions.sh capture-open area photo` *(was: instant full-screen shot)* |
+| PrtSc | `actions.sh capture-open area photo` *(was: instant full-screen shot; confirmed by Tyler at C0)* |
 | Super+PrtSc | recording → `rec-stop`; else `capture-open area video` |
 | Super+Shift+S | unchanged: instant `snip` via slurp (no-UI path, keeps working without Quickshell) |
 | Shift+Super+PrtSc | unchanged: `rec-area` |
@@ -218,11 +242,26 @@ unrelated `actions.sh` strings are untouched.
 - python-wayfire exposes view geometry and stacking order for `capture-views.py`.
 - `Quickshell.screens` gives each output's scale for logical → physical crop.
 
+**Checked at C0 (2026-09-29):**
+- `qs -c <name>` runs `…/quickshell/<name>/shell.qml`, and `-c` is accepted by `qs ipc` too
+  (`qs --help`, `qs ipc --help` on 0.3.1). VERIFIED.
+- Window input mask: windows have a `mask` region property (source, `proxywindow.hpp:58`). Behaviour: C1.
+- `FileView` on tmpfs: see §2.2 (Tyler's source read). Behaviour: C1.
+- `ffmpeg`: VERIFIED (§2.3).
+- wf-recorder and the cursor: inconclusive at C0 (the pointer was hidden, the region static); Tyler
+  runs a 3 s test with the mouse moving.
+- python-wayfire: geometry yes, stacking no. Resolved by D1 (§2.4).
+- Scale: Wayfire's output JSON has no scale; `ShellScreen.devicePixelRatio` does (source). Both
+  outputs are at 1.0 today.
+
 ## 10. Later (not in scope)
 - **Wayfire fork: capture-exclusion.** Hide layer surfaces with a given namespace (e.g.
   `enhalation-island`) from screencopy, so full-screen recordings skip the island. INFERRED
   feasible but non-trivial: wlr-screencopy copies the composited frame, so it needs a second
   render pass without those surfaces.
+- **Stacking order in the fork's IPC** (from C0, D1): add the scene-graph order to
+  `window-rules/list-views` (or a new method) in the Wayfire fork, so Window mode can drop the
+  focus-order guess.
 - **Pause** via segments: stop into part files, resume into a new one, `ffmpeg -f concat -c copy`
   on Stop.
 - **Annotate** after a screenshot (satty) from the toast's action.
