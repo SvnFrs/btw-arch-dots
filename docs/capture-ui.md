@@ -66,10 +66,16 @@ New `actions.sh` verbs, logged like the rest:
 
 | Verb | Does |
 |---|---|
-| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson); `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.png` and, with `-c`, to `freeze-cursor.png`; then `qs -c enhalation ipc call capture show <mode> <kind>`. If `qs` fails, fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) so a key press never does nothing |
+| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson) — *(C3 follow-up)* only when the control centre is mapped; `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.ppm` and, with `-c`, to `freeze-cursor.ppm`; then `qs_call capture show <mode> <kind>`. *(C3 follow-up)* Fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) **only** when `qs_call rec ping` fails, so a key press never does nothing and never opens two UIs |
 | `shot-crop <x> <y> <w> <h> [cursor]` | crop the freeze (physical px) into `$PIC/<date>.png`, `wl-copy -t image/png`, toast **with the image** (`notify-send -i "$F"`) |
 | `rec-start [geometry]` / `rec-stop` / `rec-discard` | today's `rec_start` / `rec_stop` bodies, plus the state file below. `rec-discard` = `rec-stop`, wait for wf-recorder to exit, then delete that one file |
 | `rec` / `rec-area` | unchanged meaning (toggle), now via the verbs above |
+
+*(C3 follow-up, Tyler)* **IPC rule.** Every `qs` IPC call in `actions.sh` goes through one helper,
+`qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }`, so no caller can forget the `--`
+or hang on a stuck instance. **No IPC function may share a name with a `qs ipc` subcommand**
+(0.3.1: `show`, `call`, `wait`, `listen`, `prop`). `capture show` predates the rule; it works only
+because `qs_call` passes `--` (C3 record).
 
 State file (atomic write: tmp + `mv`): `$XDG_RUNTIME_DIR/capture/rec.json`
 `{"state":"recording|saved|failed","file":"…","started":<epoch ms>,"mode":"screen|area","geometry":"x,y WxH|null","audio":"desktop","size":<bytes|null>,"duration_ms":<int|null>,"log":"…"}`.
@@ -167,21 +173,43 @@ and confirmed over IPC.
 - **C3 scope:** Window mode and Video are drawn but disabled (`opacity-disabled`) until C4.
   VERIFIED plans: default area `shot-crop 1400 540 640 360`, Screen `shot-crop 0 0 3440 1440`.
   Fallback: with Quickshell down, `capture-open area photo` runs `snip`.
-- **Still open:** crop = selection × scale on the `laptop` kanshi profile. Both outputs are at scale
-  1.0, and switching profiles moves windows, so Tyler runs that one.
+- **Kanshi `laptop` profile: skipped (Tyler).** Both outputs are at scale 1.0, so the scale path is untested.
+
+**C3 follow-ups (Tyler's C3 decisions, 2026-09-29).**
+- **`qs_call`** (the rule above) is the only place `actions.sh` names `qs … ipc`.
+- **Latency, PrtSc → overlay mapped, control centre closed** (`t0` just before `actions.sh`; mapped =
+  Wayfire `list_views` shows `enhalation-capture`, polled every 5 ms; then the 180 ms fade-in):
+
+  | | returned | mapped | where the time went |
+  |---|---|---|---|
+  | before | 631 ms | **657 ms** | panel close + `sleep 0.25` ~255 ms, python ~40 ms, PNG pair ~220 ms, `qs` ~95 ms |
+  | after | 107 ms | **144 ms** | one python call ~20 ms, PPM pair ~45 ms, `qs_call` ~33 ms |
+
+  Three changes: PPM freezes (`grim -t ppm`), `close_panel` + 250 ms only when
+  `swaync-control-center` is mapped, and the focused output and that check from **one** python call.
+  With the control centre open, the 250 ms comes back by design.
+- **PPM:** the freezes are `freeze.ppm` / `freeze-cursor.ppm` (§2.3). Qt reads PPM without a plugin.
+  VERIFIED: the overlay's own pixels inside the default area equal `freeze.ppm` (AE = 0), and a
+  `shot-crop 100 100 640 360` from the PPM is 640×360 and equals the PPM crop (AE = 0).
+- **Segmented:** the `findIndex` TypeError came from the Repeater's id `options` shadowing the
+  `options` property; the Repeater is `optionItems` now. VERIFIED: a fresh `qs` log has 0 warning or
+  error lines after switching Area/Screen six times.
+- **Fallback, never two UIs.** VERIFIED both ways: with Quickshell down, `capture-open area photo`
+  runs `snip`; with `ping` answering but `capture show` failing (stubbed), it logs, notifies, returns
+  1, and no overlay or slurp appears.
 
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
-island is not running (`qs -c enhalation ipc call rec ping` fails), so there is never both.
+island is not running (`qs_call rec ping` fails), so there is never both.
 
 ### 2.3 Freeze, then crop (photo)
-The overlay shows `freeze.png` full-screen (a plain `Image`), so what you select is what you get —
+The overlay shows `freeze.ppm` full-screen (a plain `Image`), so what you select is what you get —
 menus and tooltips included. The selection is in logical px; `shot-crop` receives physical px
-(`× screen scale`). Crop with `ffmpeg -i freeze.png -vf crop=w:h:x:y` (`ffmpeg` should be present
+(`× screen scale`). Crop with `ffmpeg -i freeze.ppm -vf crop=w:h:x:y` (`ffmpeg` should be present
 as a wf-recorder dependency, INFERRED) or ImageMagick if installed — pick one at C0, record it.
 **Picked at C0: `ffmpeg`.** VERIFIED: the `ffmpeg` package provides the `libavcodec.so` that
 `wf-recorder` depends on, so the CLI is present whenever wf-recorder is. ImageMagick is installed
 explicitly but nothing depends on it.
-Pointer toggle ON → crop `freeze-cursor.png` instead. Both frames are taken before the overlay maps,
+Pointer toggle ON → crop `freeze-cursor.ppm` instead. Both frames are taken before the overlay maps,
 so the overlay can never be in the picture.
 
 Video mode does not freeze: the overlay shows the live desktop (transparent surface, scrim only
@@ -214,7 +242,7 @@ Layer `overlay`, exclusive keyboard focus while open, full-screen on each output
 
 | Part | Spec |
 |---|---|
-| Backdrop | `freeze.png` (photo) or transparent (video) |
+| Backdrop | `freeze.ppm` (photo) or transparent (video) |
 | Scrim | outside the selection: `capture-scrim` = `ground-deep` ×.55 → `#11111b8c` (new derived token). Inside: clear |
 | Selection | 1.5 px `ink` at 90%, radius 2. Corner handles 12 px circles: `radial-gradient(thumb-hi → ink)`, `thumb-shadow`. Hit targets 24 px; edges resize, inside drags. Last area remembered for the session |
 | Size chip | glass pill below-right of the selection, caption 12 px, `640 × 360` in physical px |
@@ -330,7 +358,8 @@ unrelated `actions.sh` strings are untouched.
 - **C2** `actions.sh` verbs + `rec.json`; island wired to real recordings; notification fallback.
   Test start/stop/discard; `ffprobe` shows the right duration; the moov atom is intact after stop.
 - **C3** overlay: Area + Screen, Photo; freeze + crop; PrtSc binding. Verify the crop's pixel size
-  = selection × scale on both kanshi profiles (`code` on the G5, `laptop` on eDP-1).
+  = selection × scale on both kanshi profiles (`code` on the G5, `laptop` on eDP-1). *(`laptop`
+  skipped by Tyler: both outputs are at scale 1.0, so the scale path is untested.)*
 - **C4** Video from the overlay; Window mode; Pointer toggle; swaync buttons; Super+PrtSc.
 - **C5** *(also, from the C2 review)* rotate the actions log **in place** (`cat tmp > "$LOG"`, not
   `mv`), so long-running children keep writing to the live log. Motion tuning against §3/§4, `dots.conf`, packages list, doctor check, `CLAUDE.md` (the

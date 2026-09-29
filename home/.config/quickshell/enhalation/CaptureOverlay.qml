@@ -91,7 +91,7 @@ PanelWindow {
 
         Image {                                  // the freeze (Pointer ON shows the one with the cursor)
             anchors.fill: parent
-            source: ov.active ? "file://" + ov.dir + (ov.capture.pointer ? "/freeze-cursor.png" : "/freeze.png")
+            source: ov.active ? "file://" + ov.dir + (ov.capture.pointer ? "/freeze-cursor.ppm" : "/freeze.ppm")
                                 + "?s=" + ov.capture.serial : ""
             cache: false
             smooth: false

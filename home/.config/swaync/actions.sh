@@ -172,7 +172,11 @@ except Exception: v = None
 print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
 }
 
-island_up() { timeout 1 qs -c enhalation ipc call rec ping >/dev/null 2>&1; }
+# MOI lenh IPC toi Quickshell di qua day, de khong ai quen `--`: ten ham trung ten
+# subcommand cua `qs ipc` (vd "show") se bi CLI hieu nham (exit 109). Luat: khong ham
+# IPC nao duoc trung ten mot subcommand cua `qs ipc` (docs/capture-ui.md §2.2).
+qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }
+island_up() { qs_call rec ping >/dev/null 2>&1; }
 
 # Notification "REC" cu (neu co): island dang chay -> dong no; khong -> thay bang $1/$2.
 rec_note_done() {
@@ -294,29 +298,34 @@ rec_exited() {                     # $1 = exit code cua wf-recorder
 CAP_DIR="${XDG_RUNTIME_DIR:-/tmp}/capture"
 
 capture_open() {                   # $1 = area|screen|window, $2 = photo|video
-  local mode=${1:-area} kind=${2:-photo} out a b
-  close_panel
-  sleep 0.25                       # doi control center bien mat (bai hoc cu o tren)
+  local mode=${1:-area} kind=${2:-photo} out cc a b
   mkdir -p "$CAP_DIR"
+  # MOT lan python: output dang focus VA control center co dang mo khong.
+  read -r out cc < <(python3 -c 'from wayfire import WayfireSocket
+s = WayfireSocket()
+cc = any(v.get("mapped") for v in s.list_views() if v.get("app-id") == "swaync-control-center")
+print(s.get_focused_output()["name"], int(cc))' 2>/dev/null)
+  # Chi dong + doi 250 ms khi control center DANG mo (bai hoc cu: no se nam trong anh).
+  # Khong biet (python loi) thi coi nhu dang mo cho chac.
+  if [[ ${cc:-1} != 0 ]]; then close_panel; sleep 0.25; fi
+  printf '%s' "$out" >"$CAP_DIR/freeze-output"
   if [[ $kind == photo ]]; then
-      out=$(python3 -c 'from wayfire import WayfireSocket; print(WayfireSocket().get_focused_output()["name"])' 2>/dev/null)
-      # Hai anh chup SONG SONG (-l 1 = nen nhanh, ~0.2 s thay vi 0.5 s), ca hai TRUOC khi
+      # Hai anh chup SONG SONG, dang PPM (~40 ms moi anh, PNG ~200 ms), ca hai TRUOC khi
       # overlay hien, nen overlay khong bao gio lot vao anh. freeze-cursor co con tro.
-      grim -l 1 ${out:+-o "$out"} "$CAP_DIR/freeze.png" & a=$!
-      grim -l 1 -c ${out:+-o "$out"} "$CAP_DIR/freeze-cursor.png" & b=$!
+      grim -t ppm ${out:+-o "$out"} "$CAP_DIR/freeze.ppm" & a=$!
+      grim -t ppm -c ${out:+-o "$out"} "$CAP_DIR/freeze-cursor.ppm" & b=$!
       if ! wait "$a" || ! wait "$b"; then
           notify "Screenshot" "grim loi - xem $LOG"; return 1
       fi
-      printf '%s' "$out" >"$CAP_DIR/freeze-output"
-      # `--`: "show" is ALSO the name of `qs ipc show` (list targets), so without it the CLI
-      # parses `ipc call capture show …` as that subcommand, rejects the args (exit 109),
-      # and a PrtSc would silently fall back to snip.
-      if timeout 2 qs -c enhalation ipc call -- capture show "$mode" "$kind" >/dev/null 2>&1; then
-          return 0
-      fi
   fi
-  # Quickshell khong chay (hoac Video, den C4 moi co): lam dung viec cu, de mot phim
-  # bam khong bao gio "khong lam gi".
+  qs_call capture show "$mode" "$kind" >/dev/null && return 0
+  # `show` that bai. Chi quay ve duong cu khi Quickshell KHONG tra loi ping — neu no
+  # tra loi ma show van loi thi bao loi, KHONG fallback: khong bao gio hai UI cung luc.
+  if island_up; then
+      echo "capture show that bai du Quickshell van tra loi ping: khong fallback"
+      notify "Screenshot" "overlay khong mo duoc - xem $LOG"
+      return 1
+  fi
   case "$kind:$mode" in
     photo:screen) exec bash "$ACTIONS" shot ;;
     photo:*)      exec bash "$ACTIONS" snip ;;
@@ -326,8 +335,8 @@ capture_open() {                   # $1 = area|screen|window, $2 = photo|video
 }
 
 shot_crop() {                      # $1-$4 = x y w h (physical px), $5 = "cursor" -> anh co con tro
-  local x=${1:-} y=${2:-} w=${3:-} h=${4:-} src="$CAP_DIR/freeze.png" F v
-  [[ ${5:-} == cursor ]] && src="$CAP_DIR/freeze-cursor.png"
+  local x=${1:-} y=${2:-} w=${3:-} h=${4:-} src="$CAP_DIR/freeze.ppm" F v
+  [[ ${5:-} == cursor ]] && src="$CAP_DIR/freeze-cursor.ppm"
   for v in "$x" "$y" "$w" "$h"; do
       [[ $v =~ ^[0-9]+$ ]] || { notify "Screenshot" "vung chon khong hop le - xem $LOG"; return 1; }
   done
