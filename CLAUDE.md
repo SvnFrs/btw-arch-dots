@@ -131,13 +131,19 @@ changing the theme means touching all of them. `.zshrc` deliberately sources the
 ### Assets
 
 `.gitignore` excludes JetBrains Mono Nerd, Catppuccin-SE and GoogleDot cursors —
-`install-assets.sh` re-fetches them. Cartograph CF (commercial, in
-`home/.local/share/fonts/cartograph-cf/`), the `Graphite-Recolored-*` recolors
-and the `oreo_*` cursors are vendored because they are not re-downloadable.
-Never add redistributable assets to git; extend `install-assets.sh` instead.
+`install-assets.sh` re-fetches them. The `Graphite-Recolored-*` recolors and the
+`oreo_*` cursors are vendored because they are not re-downloadable. Never add
+redistributable assets to git; extend `install-assets.sh` instead.
 
-Cartograph lives in its own directory rather than `nerd-fonts/` so it cannot
-collide with the packaged JetBrains faces.
+**This repo is public, so fonts do not live here.** Cartograph CF (the VS Code /
+Zed editor font, commercial) and every other personal font live in the
+**private** repo `SvnFrs/cartograph-fonts`, checked out at
+`~/Documents/Projects/cartograph-fonts`. It has its own CLI, `fonts` (on PATH
+via `~/.local/bin/fonts`): `fonts add <zip|dir|file> [--nerd]`, `fonts patch`,
+`fonts install`, `fonts doctor`. It links `~/.local/share/fonts/<slug>` into
+that repo. `install-assets.sh` clones it and runs `fonts install`, and
+`dots doctor` checks that `CartographCF Nerd Font` resolves. Never commit a font
+file to this repo.
 
 ## Conventions
 

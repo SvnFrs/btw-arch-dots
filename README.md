@@ -136,14 +136,15 @@ For `link` entries there is nothing to pull or push — edit the file, then comm
 | | why |
 |---|---|
 | JetBrains Mono Nerd, Catppuccin-SE icons, GoogleDot cursors | freely re-downloadable — `scripts/install-assets.sh` |
+| Cartograph CF (the VS Code / Zed editor font), Gelasio | Cartograph is commercial, so it lives in the private fonts repo (`SvnFrs/cartograph-fonts`, with its own `fonts` CLI). `scripts/install-assets.sh` clones and installs it |
 | `~/.config/pipewire/*.conf` | vendoring the distro defaults means silently running a stale copy after every PipeWire update. Only `*.conf.d/` drop-ins are tracked |
 | ranger `rc.conf`, `commands.py`, `commands_full.py` | byte-identical to the shipped defaults |
 | `~/.gitconfig` | carries work credential helpers and a work email. `~/.config/git/ignore` is tracked; identity stays machine-local |
 | systemd-boot config | this machine boots GRUB. The old `boot/loader/` entry pointed at the wrong disk entirely |
 | the `wayfire` package | the compositor is a source build in `/usr/local` — see [`docs/wayfire-build.md`](docs/wayfire-build.md) |
 
-Cartograph CF (commercial), the `Graphite-Recolored-*` recolors and the `oreo_*`
-cursors **are** vendored — they are not re-downloadable.
+The `Graphite-Recolored-*` recolors and the `oreo_*` cursors **are** vendored,
+because they are not re-downloadable.
 
 ---
 

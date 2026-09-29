@@ -427,6 +427,10 @@ PY
   if [[ -n $cur_wf && ! -d $HOME/.icons/$cur_wf && ! -d /usr/share/icons/$cur_wf ]]; then
     bad "cursor theme '$cur_wf' is not installed — run scripts/install-assets.sh"
   fi
+  # VS Code and Zed both name this family. It comes from the private fonts
+  # repo (commercial font), which install-assets.sh clones and installs.
+  if fc-list -q 'CartographCF Nerd Font' 2>/dev/null; then chk "editor font installed (CartographCF Nerd Font)"
+  else bad "CartographCF Nerd Font (VS Code/Zed editor font) is missing — run scripts/install-assets.sh"; fi
 
   echo
   (( fail )) && { printf '  %sdoctor found problems%s\n' "$R" "$N"; return 1; }

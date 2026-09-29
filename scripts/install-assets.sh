@@ -11,9 +11,11 @@
 #   JetBrains Mono Nerd     | in the official repos (ttf-jetbrains-mono-nerd)
 #   Catppuccin-SE icons     | GitHub release, ~30 MB
 #   GoogleDot cursors       | GitHub release, two variants
+#   Cartograph CF, Gelasio  | the PRIVATE fonts repo (SvnFrs/cartograph-fonts):
+#                           | Cartograph is commercial, so it cannot live in
+#                           | this public repo. Needs `gh auth login`.
 #
 # Still vendored in the repo, because they are NOT re-downloadable:
-#   Cartograph CF Nerd Font        home/.local/share/fonts/cartograph-cf/
 #   Graphite-Recolored-* cursors   home/.icons/
 #   oreo_* cursors                 home/.icons/
 # Those are deployed by `dots link`, not by this script.
@@ -76,6 +78,23 @@ for variant in Black White; do
     "https://github.com/ful1e5/Google_Cursor/releases/latest/download/GoogleDot-${variant}.tar.gz" \
     "GoogleDot-${variant}.tar.gz" "GoogleDot-${variant}"
 done
+
+# ── 4. Personal fonts (Cartograph CF for VS Code / Zed, Gelasio) ─────────────
+# The fonts repo has its own CLI; `fonts install` links each family into
+# ~/.local/share/fonts, backing up whatever was there.
+FONTS_REPO="${FONTS_REPO:-$HOME/Documents/Projects/cartograph-fonts}"
+step "personal fonts: $FONTS_REPO"
+if [[ ! -d $FONTS_REPO/.git ]]; then
+  if command -v gh >/dev/null && gh repo clone SvnFrs/cartograph-fonts "$FONTS_REPO" -- --quiet; then
+    ok "cloned the private fonts repo"
+  else
+    warn "could not clone SvnFrs/cartograph-fonts (private) — run \`gh auth login\`, then re-run this script"
+  fi
+fi
+if [[ -x $FONTS_REPO/bin/fonts ]]; then
+  "$FONTS_REPO/bin/fonts" install
+  [[ -e $HOME/.local/bin/fonts ]] || ln -s "$FONTS_REPO/bin/fonts" "$HOME/.local/bin/fonts"
+fi
 
 # ── refresh ──────────────────────────────────────────────────────────────────
 step "refreshing font cache"
