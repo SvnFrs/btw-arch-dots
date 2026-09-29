@@ -48,7 +48,12 @@
       "buttons-per-row": 2,
       "actions": [
         { "label": "  Screenshot", "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area photo" },
-        { "label": "  Record", "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area video" }
+        {
+          "label": "  Record",
+          "type": "toggle",
+          "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area video",
+          "update-command": "bash ~/.config/swaync/actions.sh rec-active"
+        }
       ]
     },
     "mpris": {

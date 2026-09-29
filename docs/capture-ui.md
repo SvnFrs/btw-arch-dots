@@ -66,7 +66,8 @@ New `actions.sh` verbs, logged like the rest:
 
 | Verb | Does |
 |---|---|
-| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson) — *(C3 follow-up)* only when the control centre is mapped; `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.ppm` and, with `-c`, to `freeze-cursor.ppm`; then `qs_call capture show <mode> <kind>`. *(C3 follow-up)* Fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) **only** when `qs_call rec ping` fails, so a key press never does nothing and never opens two UIs. *(C4)* With `video`, while a recording runs, it runs `rec-stop` instead (Super+PrtSc, §6) |
+| `capture-open <area\|screen\|window> <photo\|video>` | `close_panel`; `sleep 0.25` (the existing lesson) — *(C3 follow-up)* only when the control centre is mapped; `grim` the focused output to `$XDG_RUNTIME_DIR/capture/freeze.ppm` and, with `-c`, to `freeze-cursor.ppm`; then `qs_call capture open <mode> <kind>` *(renamed from `show` at C4)*. *(C3 follow-up)* Fall back to the old path (`snip` / `shot` / `rec-area` / `rec`) **only** when `qs_call rec ping` fails, so a key press never does nothing and never opens two UIs. *(C4)* With `video`, while a recording runs, it runs `rec-stop` instead (Super+PrtSc, §6) |
+| `rec-active` | *(C4)* prints `true` while `rec.json` says `recording`, else `false`. swaync's Record toggle runs it on every control-centre open (`update-command`), so it sits before the logging block, like the volume verbs |
 | `shot-crop <x> <y> <w> <h> [cursor]` | crop the freeze (physical px) into `$PIC/<date>.png`, `wl-copy -t image/png`, toast **with the image** (`notify-send -i "$F"`) |
 | `rec-start [geometry]` / `rec-stop` / `rec-discard` | today's `rec_start` / `rec_stop` bodies, plus the state file below. `rec-discard` = `rec-stop`, wait for wf-recorder to exit, then delete that one file |
 | `rec` / `rec-area` | unchanged meaning (toggle), now via the verbs above |
@@ -74,8 +75,8 @@ New `actions.sh` verbs, logged like the rest:
 *(C3 follow-up, Tyler)* **IPC rule.** Every `qs` IPC call in `actions.sh` goes through one helper,
 `qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }`, so no caller can forget the `--`
 or hang on a stuck instance. **No IPC function may share a name with a `qs ipc` subcommand**
-(0.3.1: `show`, `call`, `wait`, `listen`, `prop`). `capture show` predates the rule; it works only
-because `qs_call` passes `--` (C3 record).
+(0.3.1: `show`, `call`, `wait`, `listen`, `prop`). No exceptions: *(C4 decision 1, Tyler)* `capture show`
+became `capture open`, and `qs_call` keeps `--` as a second guard.
 
 State file (atomic write: tmp + `mv`): `$XDG_RUNTIME_DIR/capture/rec.json`
 `{"state":"recording|saved|failed","file":"…","started":<epoch ms>,"mode":"screen|area","geometry":"x,y WxH|null","audio":"desktop","size":<bytes|null>,"duration_ms":<int|null>,"log":"…"}`.
@@ -167,7 +168,7 @@ and confirmed over IPC.
   to the freeze crop (ImageMagick AE = 0); bad input returns 1 and notifies.
 - **Sizing:** the overlay sizes the selection from the **screen** (`ShellScreen.width/height`),
   because the window is not sized yet when it activates (that first gave `-270 -130`).
-- **Test hooks** on `capture`, next to `show`: `select x y w h` (logical px), `shoot`, `cancel`, and
+- **Test hooks** on `capture`, next to `show` (now `open`): `select x y w h` (logical px), `shoot`, `cancel`, and
   `plan`. `plan` returns the `shot-crop` the shutter would run, **without** running it, so tests
   never put a screenshot into the real clipboard history.
 - **C3 scope:** Window mode and Video are drawn but disabled (`opacity-disabled`) until C4.
@@ -231,10 +232,39 @@ and confirmed over IPC.
   with the default plan.
 - **Latency** after C4: 112 ms to mapped (control centre closed).
 - **Log:** 0 warning or error lines after switching through every mode × kind.
-- **Honest limit:** `wf-recorder -g "100,100 101x101"` writes 100×100 — odd sizes round down to
-  even, so an odd-sized Area or Window loses its last row or column of pixels in Video.
-- **Still open (Tyler, from C0):** that Video's pointer is "always recorded" is still INFERRED. The
-  3 s cursor test needs someone moving the mouse.
+- `wf-recorder -g "100,100 101x101"` writes 100×100: odd sizes round down to even (fixed in the
+  UI, decision 4 below).
+
+**C4 decisions (Tyler, 2026-09-29).**
+1. **`capture show` → `capture open`**, so the §2.2 rule has no exceptions. VERIFIED: `capture show`
+   now answers "Function not found", and `capture open` returns 0 and opens the overlay.
+2. **The unseen freeze in Video: accepted.** After a Video → Photo switch, the backdrop is the
+   screen at open time (§2.3).
+3. **Record while recording = stop, and the state is visible.** The installed
+   `/etc/xdg/swaync/configSchema.json` (0.12.6) has buttons-grid `"type": "toggle"` and
+   `update-command` ("executed on visibility change of cc … should echo true or false"). So Record is
+   a toggle whose `update-command` is `bash ~/.config/swaync/actions.sh rec-active`. Its active state
+   looks like a critical card: `danger-soft` fill, `danger-rim`, and Demi Bold, so the state is not
+   carried by hue alone. *(evidence)* The schema says toggles get an `.active` class, but the binary builds
+   `GtkToggleButton`s and has no such class string, so the selector is GTK 4's `button.toggle:checked`,
+   as in the packaged CSS. VERIFIED on screen: danger while recording, and a plain pill after the stop.
+   `rec-active` printed `true` while recording and `false` after.
+4. **Odd sizes in Video are snapped in the UI.** The selection's width and height snap down to even
+   (the frame, handles, scrim and chip all draw the snapped rect), so the size shown is the size
+   recorded. Photo keeps odd sizes. VERIFIED with `select 101 100 641 361`: Video plans
+   `rec-start 101,100 640x360` and its chip reads 640 × 360; Photo plans `shot-crop 101 100 641 361`
+   and its chip reads 641 × 361.
+5. **`py_compile` on the `.py` files from `7d4db0e`:** that is only `ipc-scripts/inactive-alpha.py`.
+   It compiles, and its AST minus the module docstring is identical before and after, so the
+   translation changed comments and the docstring only.
+
+**Island fix (from Tyler's report: the Saved card came back when spread-overview opened).**
+`dismissed` lived in memory, so every Quickshell hot reload or restart re-read the last `saved`
+`rec.json` and replayed the card for 6 s. The report coincided with two QML saves, whose reloads
+were logged at 23:13:31 and 23:14:10, after a recording saved at 23:08:47. Now the island's first read
+(start or reload) counts a saved/failed state as already dismissed; only a live change shows
+the card. VERIFIED: the hot reload at 23:15:53, with that stale `saved` file present, mapped no
+island; a live stop at 23:16 still showed Saved.
 
 Indicator fallback: `rec-start` sends the old critical "REC" notification **only** when the
 island is not running (`qs_call rec ping` fails), so there is never both.
@@ -250,11 +280,13 @@ explicitly but nothing depends on it.
 Pointer toggle ON → crop `freeze-cursor.ppm` instead. Both frames are taken before the overlay maps,
 so the overlay can never be in the picture.
 
-Video mode does not freeze: the overlay shows the live desktop *(C4: it still takes the freeze pair, unseen, so
-switching Video → Photo while open has a backdrop)* (transparent surface, scrim only
+Video mode does not freeze: the overlay shows the live desktop *(C4, accepted: it still takes the freeze pair,
+unseen, so switching Video → Photo while open has a backdrop — the screen as it was when the overlay
+opened, not the screen at the switch)* (transparent surface, scrim only
 outside the selection), and on the shutter it leaves (150 ms) **before** `rec-start` runs.
 wf-recorder has no cursor option (VERIFIED: none in `wf-recorder(1)` 0.6.0), so in Video mode the
-Pointer toggle is shown ON and disabled ("always recorded", INFERRED — confirm with a 3 s test).
+Pointer toggle is shown ON and disabled ("always recorded"). **VERIFIED 2026-09-29 (Tyler):** a
+Video area recorded while moving the mouse has the pointer in the file.
 
 ### 2.4 Window mode
 `capture-views.py` (python-wayfire, stdlib otherwise) prints the mapped toplevel views on the
@@ -375,7 +407,7 @@ surface (§3 "Hint"), and nothing may use a pair listed in `FORBIDDEN`.
 | Super+PrtSc | recording → `rec-stop`; else `capture-open area video` |
 | Super+Shift+S | unchanged: instant `snip` via slurp (no-UI path, keeps working without Quickshell) |
 | Shift+Super+PrtSc | unchanged: `rec-area` |
-| Mouse | swaync control centre gets two glass buttons (swaync `buttons-grid`): "Screenshot" (U+F030) and "Record" (U+F03D) → `capture-open area photo/video` |
+| Mouse | swaync control centre gets two glass buttons (swaync `buttons-grid`): "Screenshot" (U+F030) and "Record" (U+F03D) → `capture-open area photo/video`. *(C4)* Record is a toggle: while recording it shows `danger` and a press stops the recording |
 | Mouse | clicking the island (§4) |
 
 `wayfire.ini` edits follow the brief's inode rules: write in place, then verify **over IPC**
@@ -409,7 +441,7 @@ recording notifications the island stands in for (they still show when the islan
 - PanelWindow input mask (`mask: Region { item: … }`) limits clicks to the island.
 - `FileView` change-watching works on `$XDG_RUNTIME_DIR` (tmpfs).
 - `ffmpeg` CLI present (wf-recorder dependency).
-- wf-recorder records the cursor (no flag either way).
+- wf-recorder records the cursor (no flag either way). **VERIFIED 2026-09-29** (below).
 - python-wayfire exposes view geometry and stacking order for `capture-views.py`.
 - `Quickshell.screens` gives each output's scale for logical → physical crop.
 
@@ -420,8 +452,9 @@ recording notifications the island stands in for (they still show when the islan
 - `FileView` on tmpfs: see §2.2 (Tyler's source read). **VERIFIED at C1:** each tmp + `mv` replace
   of `rec.json` was picked up (five states in a row), and deleting it hid the island (idle).
 - `ffmpeg`: VERIFIED (§2.3).
-- wf-recorder and the cursor: inconclusive at C0 (the pointer was hidden, the region static); Tyler
-  runs a 3 s test with the mouse moving.
+- wf-recorder and the cursor: inconclusive at C0 (the pointer was hidden, the region static).
+  **VERIFIED 2026-09-29 by Tyler:** a Video area recorded while moving the mouse has the pointer in
+  the file.
 - python-wayfire: geometry yes, stacking no. Resolved by D1 (§2.4).
 - Scale: Wayfire's output JSON has no scale; `ShellScreen.devicePixelRatio` does (source). Both
   outputs are at 1.0 today.

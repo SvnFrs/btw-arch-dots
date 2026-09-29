@@ -36,9 +36,9 @@ ShellRoot {
 
     IpcHandler {
         target: "capture"
-        // actions.sh capture-open calls this after it has taken the freeze (§2.2). `show` is also
-        // a `qs ipc` subcommand, so callers must pass `--` (actions.sh qs_call does).
-        function show(mode: string, kind: string): void {
+        // actions.sh capture-open calls this after it has taken the freeze (§2.2). No function here
+        // may share a name with a `qs ipc` subcommand (show, call, wait, listen, prop).
+        function open(mode: string, kind: string): void {
             frozenOn.reload();
             viewList.reload();
             const out = frozenOn.text().trim();

@@ -3,7 +3,7 @@
 # The "heavy" swaync actions (screenshot / screen recording), kept out of
 # config.json.
 #
-# Usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
+# Usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
 #
 # WHY A SEPARATE FILE:
 #   1. Nobody can debug a multi-command pipeline stuffed into a JSON string:
@@ -54,6 +54,11 @@ case "${1:-}" in
   vol-down) vol_step "-$VOL_STEP"       ; exit 0 ;;
   vol-mute) pactl set-sink-mute   @DEFAULT_SINK@   toggle >/dev/null; exit 0 ;;
   mic-mute) pactl set-source-mute @DEFAULT_SOURCE@ toggle >/dev/null; exit 0 ;;
+  # swaync's Record toggle asks this every time the control centre opens (its update-command,
+  # docs/capture-ui.md §6), so it stays out of the log too. rec.json is written by rec_state.
+  rec-active)
+      grep -qs '"state":"recording"' "${XDG_RUNTIME_DIR:-/tmp}/capture/rec.json" && echo true || echo false
+      exit 0 ;;
 esac
 # =============================================================================
 
@@ -173,9 +178,9 @@ except Exception: v = None
 print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
 }
 
-# EVERY IPC call to Quickshell goes through here, so nobody forgets `--`: a function named
-# like a `qs ipc` subcommand (e.g. "show") is misparsed by the CLI (exit 109). Rule: no
-# IPC function may share a name with a `qs ipc` subcommand (docs/capture-ui.md §2.2).
+# EVERY IPC call to Quickshell goes through here. Rule (docs/capture-ui.md §2.2): no IPC
+# function may share a name with a `qs ipc` subcommand — `capture show` was parsed as
+# `qs ipc show` (exit 109), hence `capture open`. The `--` stays as a second guard.
 qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }
 island_up() { qs_call rec ping >/dev/null 2>&1; }
 
@@ -326,11 +331,11 @@ print(s.get_focused_output()["name"], int(cc))' 2>/dev/null)
       notify "Screenshot" "grim failed - see $LOG"; return 1
   fi
   wait "$c"
-  qs_call capture show "$mode" "$kind" >/dev/null && return 0
-  # `show` failed. Fall back to the old path only when Quickshell does NOT answer ping — if
-  # it answers and show still fails, report it and DON'T fall back: never two UIs at once.
+  qs_call capture open "$mode" "$kind" >/dev/null && return 0
+  # `open` failed. Fall back to the old path only when Quickshell does NOT answer ping — if
+  # it answers and open still fails, report it and DON'T fall back: never two UIs at once.
   if island_up; then
-      echo "capture show failed although Quickshell answers ping: no fallback"
+      echo "capture open failed although Quickshell answers ping: no fallback"
       notify "Screenshot" "The overlay did not open - see $LOG"
       return 1
   fi
@@ -486,7 +491,7 @@ $cal_out"
       ;;
 
   *)
-      echo "usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
+      echo "usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
       exit 2
       ;;
 esac

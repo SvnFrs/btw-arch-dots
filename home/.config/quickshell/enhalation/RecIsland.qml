@@ -19,6 +19,7 @@ PanelWindow {
     property bool expanded: false
     property bool armed: false
     property string dismissed: ""           // key of a saved/failed state that already left
+    property bool primed: false             // the first read (start or hot reload) happened
     property real now: Date.now()
 
     // Hardening: rec.json is a plain file, so only act on what actions.sh would write.
@@ -66,6 +67,13 @@ PanelWindow {
         const wasRecording = phase === "recording";
         rec = r && ["recording", "saved", "failed"].includes(r.state) ? r : null;
         armed = false;
+        // A saved/failed state found by the FIRST read is history, not news: count it as already
+        // dismissed. `dismissed` lives in memory, so otherwise every hot reload or qs restart
+        // replays the last Saved card (seen 2026-09-29 after two QML saves).
+        if (!primed) {
+            primed = true;
+            if (rec && rec.state !== "recording") dismissed = key;
+        }
         if (!rec) {
             phase = "hidden";
         } else if (rec.state === "recording") {

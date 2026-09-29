@@ -129,6 +129,15 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   padding: 10px 14px;
   font-size: 14px;
 }
+/* Record while a recording runs (its update-command, rec-active). GTK 4 draws a toggle as
+   button.toggle:checked (the packaged CSS's selector; the schema's ".active" is not used).
+   Like a critical card: danger-soft replaces the pill, danger-rim; Demi Bold so the state
+   is not hue alone (§3.4). */
+.widget-buttons-grid flowboxchild > button.toggle:checked {
+  background: #f38ba81f;
+  box-shadow: inset 0 0 0 1px #f38ba866;
+  font-weight: 600;
+}
 
 /* ── cells: DND and volume (14 = 26 − 12) ────────────────────────────────── */
 .widget-dnd, .widget-volume {

@@ -31,7 +31,8 @@ PanelWindow {
     readonly property var view: win && hovered >= 0 && hovered < capture.views.length ? capture.views[hovered] : null
     readonly property rect winRect: view ? Qt.rect(view.geometry.x, view.geometry.y, view.geometry.w, view.geometry.h)
                                          : Qt.rect(0, 0, 0, 0)
-    readonly property rect shown: area ? sel : winRect     // what the scrim leaves clear
+    // what the frame, scrim and chip show: in Video, the size that gets recorded
+    readonly property rect shown: snapped(area ? sel : winRect)
 
     // §3: overlay layer, exclusive keyboard focus while open, full-screen on its output.
     anchors { top: true; bottom: true; left: true; right: true }
@@ -70,8 +71,12 @@ PanelWindow {
         return -1;
     }
     function shootRect() {
-        return area ? sel : win ? winRect : Qt.rect(0, 0, modelData.width, modelData.height);
+        return area || win ? shown : Qt.rect(0, 0, modelData.width, modelData.height);
     }
+    // Video (§2.3): wf-recorder rounds an odd width or height down to even, so snap it down here
+    // and the size on screen is the size recorded. Photo keeps odd sizes.
+    function evenDown(v) { const n = Math.round(v); return n - n % 2; }
+    function snapped(r) { return video ? Qt.rect(r.x, r.y, evenDown(r.width), evenDown(r.height)) : r; }
     // logical → physical px (§2.3); actions.sh crops the freeze with ffmpeg
     function cropArgs() {
         const r = shootRect();
@@ -143,7 +148,7 @@ PanelWindow {
         // selection: 1.5 px ink at 90%, radius 2, corner handles
         Rectangle {
             visible: ov.area && ov.sel.width > 0
-            x: ov.sel.x; y: ov.sel.y; width: ov.sel.width; height: ov.sel.height
+            x: ov.shown.x; y: ov.shown.y; width: ov.shown.width; height: ov.shown.height
             color: "transparent"
             radius: 2
             border.width: 1.5
@@ -154,8 +159,8 @@ PanelWindow {
             Item {                               // 12 px knob: radial thumb-hi → ink, thumb-shadow
                 required property int index
                 width: 12; height: 12
-                x: (index % 2 ? ov.sel.x + ov.sel.width : ov.sel.x) - 6
-                y: (index < 2 ? ov.sel.y : ov.sel.y + ov.sel.height) - 6
+                x: (index % 2 ? ov.shown.x + ov.shown.width : ov.shown.x) - 6
+                y: (index < 2 ? ov.shown.y : ov.shown.y + ov.shown.height) - 6
                 RectangularShadow { anchors.fill: parent; radius: 6; offset: Qt.vector2d(0, 2); blur: 6; color: Theme.thumbShadow }
                 Shape {
                     anchors.fill: parent
@@ -176,7 +181,7 @@ PanelWindow {
         // Window mode: 2 px accent outline on the picked view, glass app_id chip at its top-left
         Rectangle {
             visible: ov.win && ov.view !== null
-            x: ov.winRect.x; y: ov.winRect.y; width: ov.winRect.width; height: ov.winRect.height
+            x: ov.shown.x; y: ov.shown.y; width: ov.shown.width; height: ov.shown.height
             color: "transparent"
             border.width: 2
             border.color: Theme.accent
