@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Dim inactive toplevels, nhưng nhường quyền cho scale khi overview mở."""
+"""Dim inactive toplevels, nhưng nhường quyền cho các plugin overview khi chúng mở."""
 import sys
 from wayfire import WayfireSocket
 
@@ -11,6 +11,11 @@ except Exception as e:
 
 FOCUSED  = 1.0
 INACTIVE = 0.85
+
+# Các plugin overview: khi một trong số này mở, mọi window phải về alpha 1.0.
+# Tên lấy từ grab interface của plugin (output.cpp: data.plugin_name = owner->name),
+# nên "spread-overview" khớp với .name trong overview.hpp.
+OVERVIEW_PLUGINS = {"scale", "spread-overview"}
 
 def is_toplevel(view):
     if not view:
@@ -42,7 +47,9 @@ for v in sock.list_views():
 dim_all_inactive(last)
 
 sock.watch(["view-focused", "plugin-activation-state-changed"])
-scale_active = False
+
+# Dùng set thay vì cờ bool: nếu có nhiều overview cùng bật/tắt, restore và dim vẫn cân bằng.
+active_overviews = set()
 
 while True:
     try:
@@ -51,18 +58,23 @@ while True:
             continue
         ev = msg.get("event")
 
-        # scale bật/tắt → nhường quyền, không dim khi overview mở
-        if ev == "plugin-activation-state-changed" and msg.get("plugin") == "scale":
-            if msg.get("state"):        # activated (state=True)
-                scale_active = True
-                restore_all()           # trả mọi window về 1.0 cho overview đẹp
-            else:                       # deactivated
-                scale_active = False
-                dim_all_inactive(last)  # dim lại theo focus hiện tại
+        # overview bật/tắt → nhường quyền, không dim khi overview mở
+        plugin = msg.get("plugin")
+        if ev == "plugin-activation-state-changed" and plugin in OVERVIEW_PLUGINS:
+            if msg.get("state"):            # activated (state=True)
+                active_overviews.add(plugin)
+                if len(active_overviews) == 1:
+                    restore_all()           # trả mọi window về 1.0 cho overview đẹp
+            else:                           # deactivated
+                active_overviews.discard(plugin)
+                if not active_overviews:
+                    dim_all_inactive(last)  # dim lại theo focus hiện tại
             continue
 
-        # focus đổi → chỉ dim khi KHÔNG trong scale
-        if ev == "view-focused" and not scale_active:
+        # focus đổi → chỉ dim khi KHÔNG có overview nào đang mở.
+        # Mở overview làm focus đổi, nên nếu thiếu guard này thì window đang active
+        # bị dim ngay giữa overview (đúng lỗi đã gặp với spread-overview).
+        if ev == "view-focused" and not active_overviews:
             view = msg.get("view")
             new = view["id"] if is_toplevel(view) else -1
             if new != last:

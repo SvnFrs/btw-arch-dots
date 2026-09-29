@@ -1,0 +1,17 @@
+## Catppuccin Mocha — "spectrum": mau theo TAN SO thay vi theo do cao.
+## Gradient ngang (chi noncurses), moi cot mot mau, doi xung cho stereo:
+##   mep trai (treble) red -> mauve -> blue -> TEAL o giua (bass) -> blue -> mauve -> red mep phai
+## Cung quy uoc voi theme doc: teal = thap, red = cao. Tren 21:9, chieu ngang
+## la chieu dai nhat nen gradient ngang trai du mau hon gradient doc.
+## 7 mau (toi da 8); noi suy RGB giua cac mau Mocha di qua pink/lavender/sapphire.
+
+[color]
+horizontal_gradient = 1
+
+horizontal_gradient_color_1 = '#f38ba8'
+horizontal_gradient_color_2 = '#cba6f7'
+horizontal_gradient_color_3 = '#89b4fa'
+horizontal_gradient_color_4 = '#94e2d5'
+horizontal_gradient_color_5 = '#89b4fa'
+horizontal_gradient_color_6 = '#cba6f7'
+horizontal_gradient_color_7 = '#f38ba8'
