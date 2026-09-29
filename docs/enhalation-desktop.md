@@ -172,6 +172,14 @@ mean colour within 0.6 levels (of 255) and the same spread (VERIFIED, `bakecmp` 
 stays a flat gradient unless §9 I6 proves rofi can load an image from a repo-relative path.
 
 **DP7 — Motion.** rofi has none of its own (it appears and leaves through Wayfire's overlay fade).
+*(changed 2026-09-29, Tyler: "an in and out animation like GTK apps")* rofi now **zooms** in and out
+exactly like app windows: `[animate] zoom_enabled_for = app_id is "rofi"`, `zoom_duration = 300ms
+circle` (the same as `duration`). `animate.cpp` lets `zoom_enabled_for` override
+`fade_enabled_for`, so only rofi changes; swaync's overlay surfaces keep the fade. rofi's theme has
+no animation properties at all (only `blink`, `cursor-width`, `cursor-color`, `cursor-outline`), so
+this has to come from the compositor. VERIFIED by `wf-recorder` of the centre region: open and close
+each ramp over ~16 frames at 60fps. A full-output 3440×1440 recording drops frames and shows no
+ramp, so record a region.
 swaync: enter = CSS keyframes, 280ms `ease-out-expo` (opacity 0→1, translateY −6px→0; the control
 centre also scale .97→1). Leave cannot be styled in GTK CSS (the surface unmaps), so leave speed is
 set where it lives: `config.json` `transition-time` 150 and `wayfire.ini [animate] fade_duration`
@@ -370,6 +378,11 @@ session. That includes the Edit/Write tools, `sed -i`, and `git switch`/`checkou
 3. Confirm the inode is unchanged and that python-wayfire
    `WayfireSocket().get_option_value("animate/fade_duration")` returns 150.
 4. If it does not, re-arm with the `ln -s … && mv -T …` command from `CLAUDE.md` and check again.
+
+An unchanged inode *number* is not proof: the rofi zoom change (2026-09-29) kept inode 3292231,
+yet Wayfire did not reload. An earlier `git switch` and fast-forward had replaced the file twice,
+which killed the watch, and the filesystem then reused the number. Only the `get_option_value`
+check counts; re-arm whenever it fails.
 
 Rollback: after any `git switch` that changes `wayfire.ini`, do the same re-arm and
 `get_option_value` check before assuming the fade reverted. rofi and swaync are unaffected.

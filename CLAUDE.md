@@ -62,7 +62,9 @@ changes apply live. `[autostart]` entries only run at session start.
 
 The watch is on the file's **inode**. A save that writes a new file and renames it
 over the old one (the Edit/Write tools do this) kills live reload for the rest of
-the session, silently. Confirm a change landed with python-wayfire's
+the session, silently. So does `git switch`/`checkout`/`merge` whenever
+`wayfire.ini` differs between the commits. An unchanged inode number proves
+nothing, because filesystems reuse freed numbers. Confirm a change landed with python-wayfire's
 `WayfireSocket().get_option_value("section/option")`. Re-arm the watch by
 atomically replacing the symlink:
 `ln -s "$PWD/home/.config/wayfire.ini" ~/.config/.wf && mv -T ~/.config/.wf ~/.config/wayfire.ini`.
