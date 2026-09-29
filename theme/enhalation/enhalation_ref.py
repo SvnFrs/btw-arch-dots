@@ -172,6 +172,11 @@ def derive(tok):
     out["tint-end"] = to_hex(d["tint-end"], force_alpha=True)
     out["well-shadow"] = f"inset 0 1px 2px {tok['glass-shade']}"
     out["core-gradient"] = f"linear-gradient({CORE_DEG}deg, {tok['halo-1']}, {tok['halo-2']})"
+    # 2026-09-29: the top card of a collapsed notification stack casts this onto the cards
+    # behind it: glass-float's own second, softer layer (the §5 fallback shadow).
+    float_layers = tok["glass-float"].split(", ")
+    assert len(float_layers) == 2, "glass-float is expected to have two layers"
+    out["stack-shadow"] = float_layers[1]
     # DP9: the same two gradients in rofi's dialect. The panel ramps linearly from
     # tint-over-glass to glass-desktop over the first ROFI_SHEEN_END intervals, then holds.
     stops = [to_hex(lerp(d["tint-over-glass"], glass, min(k, ROFI_SHEEN_END) / ROFI_SHEEN_END),

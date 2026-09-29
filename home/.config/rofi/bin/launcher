@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# <super> Enter toggles: a second press closes the open rofi. rofi allows only one
+# instance, so the second press used to do nothing. This closes any rofi (switcher,
+# clipboard picker too); actions.sh treats a killed picker like Esc.
+pkill -x rofi && exit 0
 rofi \
 	-show drun \
 	-modi run,drun,ssh \

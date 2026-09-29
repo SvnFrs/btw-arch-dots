@@ -385,6 +385,21 @@ notificationwindow, blankwindow, .blank-window, .floating-notifications,
   background-color: {{cell-solid}};
   background-image: linear-gradient({{danger-soft}}, {{danger-soft}});
 }
+/* Tyler, 2026-09-29: the stack was hard to make out, since solid cards of one tone read as
+   one blob. Every stacked card gets the panel's rim and lit top edge, and the top card
+   (the last child, drawn over the rest) casts stack-shadow onto the cards behind it. */
+.control-center .notification-group.collapsed .notification-row .notification {
+  box-shadow: inset 0 1px 0 {{cell-top}}, inset 0 0 0 1px {{rim}};
+}
+.control-center .notification-group.collapsed .notification-row:last-child .notification {
+  box-shadow: {{stack-shadow}}, inset 0 1px 0 {{cell-top}}, inset 0 0 0 1px {{rim}};
+}
+.control-center .notification-group.collapsed .notification-row .notification.critical {
+  box-shadow: inset 0 1px 0 {{cell-top}}, inset 0 0 0 1px {{danger-rim}};
+}
+.control-center .notification-group.collapsed .notification-row:last-child .notification.critical {
+  box-shadow: {{stack-shadow}}, inset 0 1px 0 {{cell-top}}, inset 0 0 0 1px {{danger-rim}};
+}
 
 /* Keyboard focus (DP8: accent = focus). */
 .control-center button:focus-visible,
