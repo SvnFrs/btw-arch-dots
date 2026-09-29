@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Dim inactive toplevels, nhưng nhường quyền cho các plugin overview khi chúng mở."""
+"""Dim inactive toplevels, but step aside for the overview plugins while they are open."""
 import sys
 from wayfire import WayfireSocket
 
@@ -12,9 +12,9 @@ except Exception as e:
 FOCUSED  = 1.0
 INACTIVE = 0.85
 
-# Các plugin overview: khi một trong số này mở, mọi window phải về alpha 1.0.
-# Tên lấy từ grab interface của plugin (output.cpp: data.plugin_name = owner->name),
-# nên "spread-overview" khớp với .name trong overview.hpp.
+# The overview plugins: while any of them is open, every window must be back at alpha 1.0.
+# The names come from the plugin's grab interface (output.cpp: data.plugin_name = owner->name),
+# so "spread-overview" matches .name in overview.hpp.
 OVERVIEW_PLUGINS = {"scale", "spread-overview"}
 
 def is_toplevel(view):
@@ -39,7 +39,7 @@ def restore_all():
         if is_toplevel(v):
             set_alpha(v["id"], FOCUSED)
 
-# lấy focus hiện tại lúc khởi động
+# pick up the current focus at startup
 last = -1
 for v in sock.list_views():
     if is_toplevel(v) and v.get("activated"):
@@ -48,7 +48,7 @@ dim_all_inactive(last)
 
 sock.watch(["view-focused", "plugin-activation-state-changed"])
 
-# Dùng set thay vì cờ bool: nếu có nhiều overview cùng bật/tắt, restore và dim vẫn cân bằng.
+# A set rather than a bool flag: if several overviews open/close together, restore and dim stay balanced.
 active_overviews = set()
 
 while True:
@@ -58,22 +58,22 @@ while True:
             continue
         ev = msg.get("event")
 
-        # overview bật/tắt → nhường quyền, không dim khi overview mở
+        # an overview opened/closed → step aside; no dimming while an overview is open
         plugin = msg.get("plugin")
         if ev == "plugin-activation-state-changed" and plugin in OVERVIEW_PLUGINS:
             if msg.get("state"):            # activated (state=True)
                 active_overviews.add(plugin)
                 if len(active_overviews) == 1:
-                    restore_all()           # trả mọi window về 1.0 cho overview đẹp
+                    restore_all()           # every window back to 1.0 so the overview looks right
             else:                           # deactivated
                 active_overviews.discard(plugin)
                 if not active_overviews:
-                    dim_all_inactive(last)  # dim lại theo focus hiện tại
+                    dim_all_inactive(last)  # dim again by the current focus
             continue
 
-        # focus đổi → chỉ dim khi KHÔNG có overview nào đang mở.
-        # Mở overview làm focus đổi, nên nếu thiếu guard này thì window đang active
-        # bị dim ngay giữa overview (đúng lỗi đã gặp với spread-overview).
+        # focus changed → only dim when NO overview is open.
+        # Opening an overview changes focus, so without this guard the active window
+        # gets dimmed in the middle of the overview (exactly the bug seen with spread-overview).
         if ev == "view-focused" and not active_overviews:
             view = msg.get("view")
             new = view["id"] if is_toplevel(view) else -1
@@ -84,7 +84,7 @@ while True:
                     set_alpha(new, FOCUSED)
                 last = new
     except KeyboardInterrupt:
-        restore_all()   # dọn dẹp khi thoát, không để window kẹt ở alpha thấp
+        restore_all()   # clean up on exit; never leave a window stuck at low alpha
         break
     except Exception as e:
         print(f"Loop error: {e}", file=sys.stderr)

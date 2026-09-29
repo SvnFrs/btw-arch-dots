@@ -1,9 +1,9 @@
-## Catppuccin Mocha — "spectrum": mau theo TAN SO thay vi theo do cao.
-## Gradient ngang (chi noncurses), moi cot mot mau, doi xung cho stereo:
-##   mep trai (treble) red -> mauve -> blue -> TEAL o giua (bass) -> blue -> mauve -> red mep phai
-## Cung quy uoc voi theme doc: teal = thap, red = cao. Tren 21:9, chieu ngang
-## la chieu dai nhat nen gradient ngang trai du mau hon gradient doc.
-## 7 mau (toi da 8); noi suy RGB giua cac mau Mocha di qua pink/lavender/sapphire.
+## Catppuccin Mocha — "spectrum": colour by FREQUENCY instead of by height.
+## Horizontal gradient (noncurses only), one colour per bar, mirrored for stereo:
+##   left edge (treble) red -> mauve -> blue -> TEAL in the middle (bass) -> blue -> mauve -> red right edge
+## Same convention as the vertical theme: teal = low, red = high. On 21:9 the horizontal
+## axis is the longest, so a horizontal gradient spreads the colours further than a vertical one.
+## 7 colours (max 8); RGB interpolation between the Mocha colours passes through pink/lavender/sapphire.
 
 [color]
 horizontal_gradient = 1

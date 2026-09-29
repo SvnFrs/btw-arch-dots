@@ -299,7 +299,7 @@ over `background-color` (INFERRED either way; the single-gradient form works reg
 | launcher | `launcher.rasi` | 860px | 6 (keep) | `glyph.launch` U+F135 | `launch` (`display-drun`) | `librewolf, kitty, zed…` | — |
 | window switcher | `window-switcher.rasi` | 860px | 6 (keep) | `glyph.windows` U+F2D0 | `windows` (`display-window`) | `kitty, spread-overview…` | `active` = focused window (spark) |
 | clipboard | `clipboard.rasi` | 980px | 12 (keep) | `glyph.clip` U+F0EA | `clipboard` (`-p`, unchanged) | `ssh, https://…` | scrollbar (below) |
-| clip-del | `clipboard-delete.rasi` | 980px | 12 | `glyph.delete` U+F1F8 | `xoa` (`-p`, unchanged) | `ssh, https://…` | danger chip, message bar |
+| clip-del | `clipboard-delete.rasi` | 980px | 12 | `glyph.delete` U+F1F8 | `delete` (`-p`; English since 2026-09-29, §7) | `ssh, https://…` | danger chip, message bar |
 
 - 980px for the clipboard pickers: cliphist previews are 100 characters; Cartograph's advance is
   1230/2000 em = 9.02px at 11pt/96dpi (VERIFIED, fontTools), so 100 chars + paddings ≈ 964px.
@@ -321,8 +321,8 @@ must be empty first). `font.rasi`'s `"JetBrains Mono NerdFont Bold 11"` is not a
 ### 4.4 Script changes (the only behaviour-adjacent edits)
 - `swaync/actions.sh`: add `ROFI_THEME_DEL="${ROFI_THEME_DEL:-$HOME/.config/rofi/config/clipboard-delete.rasi}"`
   next to `ROFI_THEME`; `clip-del` uses `-theme "$ROFI_THEME_DEL"` and
-  `-mesg "Chon muc de xoa khoi lich su"` (same words, no all-caps shouting — the danger chip carries
-  the emphasis). Nothing else in `actions.sh` changes. `bash -n` must pass.
+  `-mesg "Pick an entry to delete from the history"` (no all-caps shouting — the danger chip carries
+  the emphasis; English since 2026-09-29, §7). Nothing else in `actions.sh` changes. `bash -n` must pass.
 - `rofi/bin/launcher`, `rofi/bin/window-switcher`: unchanged.
   *(changed 2026-09-29, Tyler: "super enter close for application launcher")* `rofi/bin/launcher`
   now starts with `pkill -x rofi && exit 0`, so `<super> Enter` toggles: a second press closes the
@@ -451,14 +451,19 @@ from `JetBrainsMono Nerd Font`.
 41 of 41 tested letters missing; VERIFIED fontTools). *(corrected 2026-09-29: unchanged on the
 v3.5.1 build — U+01A1 ơ, U+01B0 ư, U+1EA1 ạ, U+1EF9 ỹ all absent, 9 of 256 code points of
 U+1E00–1EFF present; VERIFIED fc-query. The fallback covers them: `fc-list ':charset=1ea1'` lists
-`JetBrainsMono Nerd Font`.)* UI copy stays unaccented as today. Clipboard
+`JetBrainsMono Nerd Font`.)* UI copy is English (§7). Clipboard
 entries and notification bodies with Vietnamese text will render those letters from the fallback
 family, glyph by glyph — acceptable, but the fallback must cover them (check
 `fc-list ':charset=1ea1' family | grep -i jetbrains`).
 
 ## 7. Copy
 Sentence case everywhere ("Clear all", "Do not disturb"). Chip labels are single lowercase words.
-Placeholders are examples, never labels. Keep each existing string's language.
+Placeholders are examples, never labels.
+*(changed 2026-09-29, Tyler: "change the comments, and the text to english, I use english mainly")*
+UI strings and code comments are English. This replaces the earlier rule to keep each existing
+string's language: the unaccented Vietnamese in `actions.sh` (notifications, log lines, the
+`clip-del` prompt and message), `wayfire.ini`, the cava config and themes, `inactive-alpha.py`
+and the two old rofi themes was translated in the same commit, with meaning unchanged.
 
 ## 8. Verification (every increment ends with the relevant subset)
 

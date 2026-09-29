@@ -1,13 +1,13 @@
 /* ~/.config/rofi/clipboard.rasi
  *
- * Theme cho clipboard picker (cliphist). Catppuccin Mocha — cung bang mau voi
- * ~/.config/swaync/style.css nen panel va picker nhin cung mot bo.
+ * Theme for the clipboard picker (cliphist). Catppuccin Mocha — the same palette as
+ * ~/.config/swaync/style.css, so the panel and the picker look like one set.
  *
- * `@theme "/dev/null"` o dong dau XOA SACH theme mac dinh cua rofi truoc khi
- * ap file nay. Thieu dong do thi rofi merge voi default va ban duoc mot mo hon
- * hop nua cu nua moi — day chinh la ly do `rofi -dmenu` tran nhin nhu dmenu.
+ * `@theme "/dev/null"` on the first line WIPES rofi's default theme before this
+ * file applies. Without it, rofi merges with the default and you get a half-old,
+ * half-new mess — which is exactly why a bare `rofi -dmenu` looks like dmenu.
  *
- * Dung:  rofi -dmenu -theme ~/.config/rofi/clipboard.rasi
+ * Usage:  rofi -dmenu -theme ~/.config/rofi/clipboard.rasi
  */
 
 @theme "/dev/null"
@@ -128,9 +128,9 @@ element-text {
     background-color : transparent;
     text-color       : inherit;
     vertical-align   : 0.5;
-    /* `highlight` KHONG nhan @reference — parser rofi bao
+    /* `highlight` does NOT take an @reference — rofi's parser says
        "unexpected Reference, expecting property close (';')".
-       Thuoc tinh nay chi an mau LITERAL. Phai viet hex truc tiep.
-       (#89b4fa = blue trong bang mau o dau file) */
+       This property only accepts a LITERAL colour. Write the hex directly.
+       (#89b4fa = blue in the palette at the top of the file) */
     highlight        : bold #89b4fa;
 }

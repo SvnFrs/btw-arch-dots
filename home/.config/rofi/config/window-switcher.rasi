@@ -16,8 +16,8 @@ window {
     background-color:               @base;
     text-color:                     @text;
     border:                         2px;
-    border-color:                   @teal;  /* Đồng bộ tone xanh mint của tóc */
-    border-radius:                  12px;   /* Bo góc khung ngoài */
+    border-color:                   @teal;  /* matches the mint tone of the hair */
+    border-radius:                  12px;   /* rounded outer frame */
     width:                          850px;
     anchor:                         center;
     x-offset:                       0;
@@ -33,7 +33,7 @@ prompt {
 
 textbox-prompt-colon {
     expand: 			            false;
-    str: 			                "󱂬";    /* Thay icon Arch bằng icon Cửa sổ cho đúng ngữ cảnh */
+    str: 			                "󱂬";    /* a window icon instead of the Arch one, to fit the context */
     border-radius:                  10px;
     background-color:               @surface0;
     text-color:                     @teal;
@@ -124,14 +124,14 @@ element alternate.urgent {
     border-radius:                  10px;
 }
 
-/* Dọn dẹp cái background xanh lá thô thiển ở bản cũ của ông */
+/* drop the crude green background from the old version */
 element normal.active,
 element alternate.active {
     background-color:               @base;
     text-color:                     @teal;
 }
 
-/* Trả lại màu highlight thanh lịch mềm mại */
+/* bring back a soft, elegant highlight colour */
 element selected {
     background-color:               @surface1;
     text-color:                     @teal;

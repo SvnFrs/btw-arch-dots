@@ -1,56 +1,56 @@
 ## ~/.config/cava/config
 ## cava 1.0.0 (Arch extra) | Catppuccin Mocha | Samsung Odyssey G5 34" (3440x1440, 21:9, 165 Hz)
 ##
-## Kiem tra da doi chieu voi source cava 1.0.0 (config.c, cava.c, cavacore.c).
-## live-config = 1: sua file nay -> cava tu nap lai, khong can restart.
-## Nap tay neu can:  pkill -USR1 cava  (toan bo config)  |  pkill -USR2 cava  (chi mau)
+## Checked against the cava 1.0.0 source (config.c, cava.c, cavacore.c).
+## live-config = 1: edit this file -> cava reloads it itself, no restart needed.
+## Reload by hand if needed:  pkill -USR1 cava  (whole config)  |  pkill -USR2 cava  (colours only)
 
 [general]
 
 live-config = 1
 
-# Khop tan so quet cua G5 (165 Hz qua DisplayPort). Doi dung so Hz dang chay:
+# Match the G5's refresh rate (165 Hz over DisplayPort). Check the rate actually in use:
 #     wlr-randr | grep -i current
-# Smoothing cua cavacore tu bu theo framerate (framerate_mod = 66 / framerate),
-# nen tang fps chi lam chuyen dong muot hon, khong doi "cam giac" roi/nay cua cot.
-# Terminal ganh khong noi thi ha xuong 120 — nhin van giong, chi bot muot.
+# cavacore's smoothing compensates for the framerate itself (framerate_mod = 66 / framerate),
+# so a higher fps only makes the motion smoother; it doesn't change how the bars fall and bounce.
+# If the terminal can't keep up, drop to 120 — it looks the same, just a little less smooth.
 framerate = 165
 
 autosens = 1
 sensitivity = 100
 
-# bars = 0 -> tu lap day theo be ngang terminal.
-# KHONG dat so bars co dinh: cava 1.0.0 thoat han ("window is too narrow for
-# number of bars set") khi Wayfire tile cua so hep lai, va voi cua so rong thi
-# no chi can giua chu khong keo gian cot.
+# bars = 0 -> fill the terminal's width automatically.
+# Do NOT set a fixed bar count: cava 1.0.0 exits outright ("window is too narrow for
+# number of bars set") when Wayfire tiles the window narrower, and in a wide window
+# it only centres the bars instead of stretching them.
 #
-# Ultrawide = rat nhieu cot ky tu. Mac dinh 2/1 tren ~400 cot -> ~130 cot song,
-# qua day: vung bass chi co vai bin FFT nen cac cot thap nhat thanh bac thang
-# trung nhau, va upstream noi linear scaling dep nhat duoi ~100 cot.
-# 3/1 cho ~85-105 cot khi full man hinh (tuy co chu), ~45 khi tile nua man hinh.
-#     so cot = (tput cols + 1) / 4
+# Ultrawide = a great many character columns. The default 2/1 on ~400 columns -> ~130 bars,
+# too dense: the bass range has only a few FFT bins, so the lowest bars turn into identical
+# steps, and upstream says linear scaling looks best below ~100 bars.
+# 3/1 gives ~85-105 bars full screen (depending on the font), ~45 when tiled to half the screen.
+#     bars = (tput cols + 1) / 4
 bars = 0
 bar_width = 3
 bar_spacing = 1
 
-# Can giua -> cot bass (giua man hinh o che do stereo) nam dung tam duong cong 1000R.
+# Centred -> the bass bars (the middle of the screen in stereo) sit at the centre of the 1000R curve.
 center_align = 1
 max_height = 100
 
-# Mo rong hon mac dinh (50 / 10000): man rong du cho de khong bop vung mid,
-# va 40 Hz de thay ro low-shelf khi ban them bass cho DT 900 Pro X.
+# Wider than the default (50 / 10000): the screen is wide enough not to squeeze the mids,
+# and 40 Hz shows the low shelf clearly when you add bass for the DT 900 Pro X.
 lower_cutoff_freq = 40
 higher_cutoff_freq = 12000
 
-# Im lang 30 s -> ngung FFT va ve, chi kiem tra input moi giay. Tiet kiem CPU
-# khi chay 165 fps. Tinh day cham toi da ~1 s.
+# 30 s of silence -> stop the FFT and drawing, only check the input every second. Saves CPU
+# at 165 fps. Wakes up within ~1 s at most.
 sleep_timer = 30
 
 
 [input]
 
-# 'auto' = monitor cua default sink. Default sink cua ban la JM6 (phan cung),
-# EasyEffects xuat vao do -> cava thay tin hieu SAU EQ.
+# 'auto' = the default sink's monitor. Your default sink is the JM6 (hardware),
+# and EasyEffects outputs to it -> cava sees the signal AFTER the EQ.
 method = pipewire
 source = auto
 
@@ -60,58 +60,58 @@ source = auto
 method = noncurses
 orientation = bottom
 
-# Stereo: bass o giua, treble ra hai mep, doi xung (da do: 60 Hz sang cot sat
-# tam, 8 kHz sang cot sat mep). Tren man 21:9 cong, tam man la cho mat nhin —
-# nen [eq] o cuoi file nang bass len de vung giua khong bi "chet".
+# Stereo: bass in the middle, treble out to both edges, mirrored (measured: 60 Hz lights bars
+# next to the centre, 8 kHz bars next to the edges). On a curved 21:9 screen the centre is where
+# you look — so the [eq] at the end of the file lifts the bass so the middle doesn't go "dead".
 channels = stereo
 reverse = 0
 
-# Bo chong nhap nhay (DEC mode 2026). Terminal khong ho tro thi thuong bo qua
-# chuoi nay; thay rac tren man hinh thi dat 0.
+# Anti-flicker (DEC mode 2026). Terminals without it usually ignore this sequence;
+# if you see garbage on screen, set 0.
 synchronized_sync = 1
 
 show_idle_bar_heads = 1
 xaxis = none
 
-# Thu kieu khac tren man rong: cot moc len va xuong tu duong giua.
+# Try another style on a wide screen: bars grow up and down from the middle line.
 ; orientation = horizontal
 
 
 [color]
 
-# Mau nam o file theme rieng: ~/.config/cava/themes/<ten>
-#   catppuccin-mocha           gradient doc chinh thuc cua catppuccin/cava
-#   catppuccin-mocha-spectrum  mau theo tan so, doi xung cho stereo
-# Doi dong duoi day -> live-config tu nap.
+# Colours live in their own theme file: ~/.config/cava/themes/<name>
+#   catppuccin-mocha           the official vertical gradient from catppuccin/cava
+#   catppuccin-mocha-spectrum  colour by frequency, mirrored for stereo
+# Change the line below -> live-config reloads it.
 theme = 'catppuccin-mocha'
 
 
 [smoothing]
 
-# Monstercat: moi cot keo cot lan can len theo he so 1.5^khoang_cach -> dinh
-# thanh doi mem thay vi rang cua. Gia tri < ~0.7 lam he so < 1 -> sai, dung duoi 1.
+# Monstercat: each bar pulls its neighbours up by a factor of 1.5^distance -> the peaks
+# become a soft ridge instead of saw teeth. Values below ~0.7 make the factor < 1 -> wrong; keep it at 1 or above.
 monstercat = 1
 waves = 0
 
-# 0 = nhanh/nhieu, 100 = cham/muot. 77 la mac dinh upstream.
+# 0 = fast/noisy, 100 = slow/smooth. 77 is the upstream default.
 noise_reduction = 77
 
 
 [eq]
 
-# TAI SAO CO KHOI NAY:
-# cava 1.0.0 (linear scaling) nhan moi cot voi he so ti le thuan tan so. Do
-# tren chinh binary 1.0.0 voi pink noise: cot bass cao ~27%, cot treble ~97%
-# -> nghieng ~3.6 lan. Voi nhac that, vung giua (bass) gan nhu phang — dung
-# nhu screenshot cua ban. Khoi nay giam do nghieng xuong ~1.5 lan
-# (do lai voi pink noise: ~50% -> ~80%), khong lam phang hoan toan.
+# WHY THIS BLOCK EXISTS:
+# cava 1.0.0 (linear scaling) multiplies each bar by a factor proportional to frequency.
+# Measured on the 1.0.0 binary itself with pink noise: the bass bars reach ~27%, the treble
+# bars ~97% -> a ~3.6x tilt. With real music the middle (bass) is almost flat — just
+# like your screenshot. This block reduces the tilt to ~1.5x
+# (measured again with pink noise: ~50% -> ~80%), without flattening it completely.
 #
-# Cach cava ap: moi key phu mot doan cot BANG NHAU theo thu tu thap -> cao,
-# tinh rieng tung kenh; khong phu thuoc so cot. Voi dai 40 Hz - 12 kHz:
+# How cava applies it: each key covers an EQUAL run of bars, in order low -> high,
+# per channel; it doesn't depend on the bar count. With the 40 Hz - 12 kHz range:
 #   1: 40-70 Hz   2: 70-125   3: 125-220   4: 220-390   5: 390-690
 #   6: 0.7-1.2k   7: 1.2-2.2k 8: 2.2-3.9k  9: 3.9-6.8k  10: 6.8-12k
-# He so > 1 ap SAU autosens -> track cuc nhieu bass co the cham tran. Thay
-# vay thi ha key 1-2 xuong. Xoa ca khoi = ve hanh vi goc cua cava.
+# Factors > 1 apply AFTER autosens -> very bass-heavy tracks can hit the ceiling. If they
+# do, lower keys 1-2. Delete the whole block = back to cava's original behaviour.
 1 = 1.8
 2 = 1.6
 3 = 1.4

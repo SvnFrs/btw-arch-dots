@@ -89,7 +89,7 @@ file **and** its directory and re-adds the file after a replace, so the tmp + `m
 
 *(C0 decision D2, done in C2, narrowly.)* `run_slurp` treats an Esc as a failure: slurp 1.5.0 exits 1
 and prints `selection cancelled`, but the old guard only accepted an **empty** output as a cancel, so
-Esc on `Super+Shift+S` pops a "slurp loi" notification (seen in the log). Fix: a cancel is exit 1
+Esc on `Super+Shift+S` pops a "slurp loi" (now "slurp failed") notification (seen in the log). Fix: a cancel is exit 1
 **and** output containing `selection cancelled`. Any other exit-1 output still notifies, because
 catching real failures was the point of the original fix. The comment explaining why stays.
 
@@ -140,7 +140,7 @@ own output is affected; `rec-exited` is a new process and logs normally.
 - `rec-discard`: file deleted, `rec.json` and the flag gone, island left;
 - `rec-area` toggle (the Shift+Super+PrtSc path, slurp faked): 2.92 s;
 - `rec` toggle (the Super+PrtSc path, full screen): 3.01 s;
-- island down: the critical "REC" notification, replaced by "Da dung ghi" on stop, and `rec.json`
+- island down: the critical "REC" notification, replaced by "Da dung ghi" (now "Recording stopped") on stop, and `rec.json`
   still written;
 - D2: an Esc sends nothing, and a real slurp error still notifies;
 - volume ±5: channels equal, back to 46%;
@@ -281,7 +281,7 @@ own shape (clicks elsewhere go to the apps underneath).
    (`org.freedesktop.FileManager1.ShowItems` over D-Bus if a file manager provides it, else
    `xdg-open dir`), Copy path (U+F0C5, `wl-copy`). Leaves after 6 s; hovering holds it.
 5. **Failed**: like Saved but U+F071 in `danger`, "Recording failed", "Open log" (`xdg-open` the
-   actions log). Replaces today's "KHOI DONG THAT BAI" notification.
+   actions log). Replaces today's "Failed to start" notification.
 
 *(C1 notes)* "Show in folder" uses U+F07C (folder-open, as drawn in the preview; §4 names no
 glyph). The island exposes test hooks next to `ping` (`qs -c enhalation ipc call rec expand|arm|collapse`)
@@ -344,8 +344,8 @@ surface (§3 "Hint"), and nothing may use a pair listed in `FORBIDDEN`.
 
 ## 7. Copy
 English, sentence case, single words on controls ("Area", "Photo", "Stop and save", "Delete it").
-The island replaces the Vietnamese recording notifications, so their strings go away with them;
-unrelated `actions.sh` strings are untouched.
+*(changed 2026-09-29, Tyler)* Every `actions.sh` string and comment is English now, including the
+recording notifications the island stands in for (they still show when the island is down).
 
 ## 8. Increments (each ends with checks, screenshots, a mouse test plan and a rollback line)
 

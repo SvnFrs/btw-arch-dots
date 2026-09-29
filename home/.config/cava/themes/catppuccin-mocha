@@ -1,8 +1,8 @@
-## Catppuccin Mocha — gradient doc, y het catppuccin/cava themes/mocha-transparent.cava
-## Khong dat background: dung nen (va do trong suot) cua terminal.
-## Duoi -> tren: teal, sky, sapphire, blue, mauve, pink, maroon, red.
-## autosens giu cot it khi cham dinh -> phan lon thoi gian la teal/blue/mauve,
-## chi dinh nhac moi len pink/red.
+## Catppuccin Mocha — vertical gradient, identical to catppuccin/cava themes/mocha-transparent.cava
+## No background set: uses the terminal's background (and transparency).
+## Bottom -> top: teal, sky, sapphire, blue, mauve, pink, maroon, red.
+## autosens keeps the bars from hitting the top often -> most of the time they are teal/blue/mauve,
+## and only the peaks of the music reach pink/red.
 
 [color]
 gradient = 1
