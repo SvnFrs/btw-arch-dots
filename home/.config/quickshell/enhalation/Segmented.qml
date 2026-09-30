@@ -7,7 +7,7 @@ import Quickshell.Widgets
 Item {
     id: root
 
-    property var options: []            // [{ key, glyph, label, enabled }]
+    property var options: []            // [{ key, glyph, label, enabled, count }]; glyph and count optional
     property string current: ""
     signal picked(string key)
 
@@ -68,7 +68,8 @@ Item {
                     anchors.centerIn: parent
                     spacing: 8
                     Text {
-                        text: modelData.glyph
+                        visible: !!modelData.glyph
+                        text: modelData.glyph || ""
                         font.family: Theme.font; font.pixelSize: 14
                         color: selected ? Theme.ink : Theme.inkMuted
                     }
@@ -77,6 +78,13 @@ Item {
                         font.family: Theme.font; font.pixelSize: 14
                         font.weight: selected ? Font.DemiBold : Font.Normal
                         color: selected ? Theme.ink : Theme.inkMuted
+                    }
+                    Text {                                  // clipboard filter counts: ink-muted 12 px
+                        visible: modelData.count !== undefined
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.count !== undefined ? String(modelData.count) : ""
+                        font.family: Theme.font; font.pixelSize: 12
+                        color: Theme.inkMuted
                     }
                 }
                 MouseArea {

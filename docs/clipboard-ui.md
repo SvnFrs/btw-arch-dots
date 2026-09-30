@@ -288,6 +288,45 @@ rollback line.
     image rows never starts eight decodes at once.
 - **K2:** `ClipPanel.qml`, read-only: list, filter, search, preview, the gliding pill, empty and
   error states. Screenshots next to the preview.
+  **K2 record (2026-09-30).** `ClipPanel.qml` (one overlay window per screen, active on the focused
+  output; IPC target `clip`: `ping`, `open`, `close`, plus test hooks `search`, `pick`, `select`, `scroll`
+  and `state`, which reports keys, kinds and counts, never clip text). `shell.qml` loads it. Segmented
+  gained optional per-option counts and glyph-less options. Theme gained `lineStrong`, the chip size
+  and the clipboard glyphs. The chip is `core-chip.png`, 136×46, from the same `bake_core` as the
+  shutter (raw-RGBA sha256 `032d9be8d5498506ab11c9f31df1dca4bd7cf0500b07997b31daa38b68ff00b6`).
+  - **Privacy.** Every on-screen check and screenshot ran on the **synthetic** history (the bench
+    generator's 750 entries, curated text/URL/#hex/multi-line/long clips on top, 2 pins in a private
+    `XDG_DATA_HOME` with the fonts linked in). Quickshell was then restarted normally, and `rec ping`
+    answered. The real db's size and mtime and the real clipboard's type and content hashes were unchanged, so nothing was
+    copied. The synthetic thumbs in `$XDG_RUNTIME_DIR/enhalation/clip` were removed afterwards
+    (their ids could collide with real ones). The screenshots were deleted after the check.
+  - **Latency**, from the start of `qs ipc call clip open` to the panel mapped: **104 ms** on the first
+    open after a start, **51–55 ms** after that (including the ~20 ms `qs` CLI; `list`, `pins` and the
+    focused-output probe run in parallel, and the window maps as soon as the output is known).
+  - `clipctl list` runs on **every** open (`listRuns` 3 after 3 opens).
+  - **Thumbs:** never more than **2** in flight. They are queued only for delegates that exist (the
+    `cacheBuffer` is two image rows): the first screen of Images started 10 jobs for 53 images.
+    Scrolling to the end and filtering away at once dropped 6 queued jobs (14 over two full rounds).
+  - **Preview:** debounced 120 ms. A late result for a row no longer selected is dropped (counted at
+    0.12–0.14 s gaps), and in every case the preview shown matched the selection.
+  - **Closing:** `clip close` and **focus loss** (the capture overlay opening over the panel) close it,
+    and the panel refuses to open while the capture overlay is up. Esc and click-outside need real
+    input, so they are in Tyler's mouse test. No K2 code path writes the clipboard.
+  - **Ligatures off, VERIFIED on screen:** the row `a >= b -> c != d === e <= f |> g` and the preview
+    render literally, where Cartograph otherwise draws `≥ → ≠ ≡` (K0). The preview's 13.5 px is
+    `pointSize: 10.125`, because `pixelSize` is an int and Qt uses 96 dpi at scale 1.0.
+  - **Clip text is PlainText everywhere:** `<b>not bold</b> &amp;` renders literally.
+  - States: "Nothing copied yet" (no history, no pins); pins still show over an empty history;
+    "No clips match"; a search past 400 chars finds nothing; and a broken db shows "cliphist didn't
+    answer — see the log" + "Open log". Its line goes to the actions log, with no contents.
+  - A clean log (0 warnings) after two rounds of open, filter, scroll, search and close, once the
+    cascade delay was clamped (`index` is -1 while a row is removed).
+  - Choices, for review:
+    - The filter counts count the search hits.
+    - Section labels only when both Pinned and Recent are present.
+    - The footer reads "Read-only for now · ↑/↓ move · Esc closes" until K3 brings the actions; Clear
+      all is drawn but inert, the row buttons come with K3, and a click only selects.
+    - The focused output comes from one python-wayfire call per open.
 - **K3:** actions (copy, delete+undo, pin, armed Clear all, keys). `actions.sh clip`/`clip-del`
   routing with the rofi fallback; test that fallback with the panel stopped.
 - **K4:** motion tuning, the swaync button (with capture-ui C4), and `CLAUDE.md`: the pins

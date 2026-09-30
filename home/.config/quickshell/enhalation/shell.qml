@@ -2,7 +2,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// docs/capture-ui.md §2.1: one ShellRoot: CaptureOverlay (per screen) + RecIsland.
+// docs/capture-ui.md §2.1: one ShellRoot: CaptureOverlay (per screen) + RecIsland, and the
+// clipboard panel (docs/clipboard-ui.md).
 ShellRoot {
     QtObject {
         id: cap
@@ -65,4 +66,6 @@ ShellRoot {
     }
 
     RecIsland {}
+
+    ClipPanel { capture: cap }                         // docs/clipboard-ui.md (K2: read-only)
 }

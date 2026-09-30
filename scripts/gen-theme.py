@@ -36,7 +36,8 @@ OUTPUTS = {
 # Baked images (enhalation_ref.bake) and where each is written.
 ASSETS = {
     "home/.config/swaync/assets": ("glass-grain.png", "switch-on.png"),
-    "home/.config/quickshell/enhalation/assets": ("glass-grain.png", "shutter-60.png", "core-stop.png"),
+    "home/.config/quickshell/enhalation/assets": ("glass-grain.png", "shutter-60.png", "core-stop.png",
+                                                  "core-chip.png"),
 }
 
 # The only private-use code points a template may name: enhalation-desktop.md §6, plus the
@@ -63,6 +64,13 @@ GLYPHS = {
     "video": 0xF03D,
     "pointer": 0xF245,
     "close": 0xF00D,
+    # clipboard panel (clipboard-ui.md §2)
+    "search": 0xF002,
+    "link": 0xF0C1,
+    "code": 0xF121,
+    "text": 0xF036,
+    "pin": 0xF08D,
+    "undo": 0xF0E2,
 }
 
 PLACEHOLDER = re.compile(r"\{\{([^{}]*)\}\}")

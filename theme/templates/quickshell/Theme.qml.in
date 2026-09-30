@@ -54,6 +54,7 @@ Singleton {
     readonly property color thumbHi: css("{{thumb-hi}}")
     readonly property color thumbShadow: css("{{thumb-shadow}}")
     readonly property color captureScrim: css("{{capture-scrim}}")
+    readonly property color lineStrong: css("{{line-strong}}")
 
     // depth
     readonly property var glassFloat: shadow("{{glass-float}}")
@@ -86,6 +87,9 @@ Singleton {
     readonly property int islandSideW: {{island-side-w}}
     readonly property int stopW: {{island-stop-w}}
     readonly property int stopH: {{island-stop-h}}
+    // clipboard panel (clipboard-ui §2); core-chip.png is baked at clipChipW × clipChipH
+    readonly property int clipChipW: {{clip-chip-w}}
+    readonly property int clipChipH: {{clip-chip-h}}
 
     // glyphs
     readonly property string gVolume: "{{glyph.volume}}"
@@ -105,4 +109,11 @@ Singleton {
     readonly property string gVideo: "{{glyph.video}}"
     readonly property string gPointer: "{{glyph.pointer}}"
     readonly property string gClose: "{{glyph.close}}"
+    readonly property string gClip: "{{glyph.clip}}"
+    readonly property string gSearch: "{{glyph.search}}"
+    readonly property string gLink: "{{glyph.link}}"
+    readonly property string gCode: "{{glyph.code}}"
+    readonly property string gText: "{{glyph.text}}"
+    readonly property string gPin: "{{glyph.pin}}"
+    readonly property string gUndo: "{{glyph.undo}}"
 }

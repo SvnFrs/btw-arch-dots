@@ -185,6 +185,7 @@ def derive(tok):
     out.update({"island-w": str(ISLAND_W), "island-pad": str(ISLAND_PAD),
                 "island-gap": str(ISLAND_GAP), "island-side-w": str(ISLAND_SIDE_W),
                 "island-stop-w": str(ISLAND_STOP_W), "island-stop-h": str(ISLAND_STOP_H)})
+    out.update({"clip-chip-w": str(CLIP_CHIP_W), "clip-chip-h": str(CLIP_CHIP_H)})
     # DP9: the same two gradients in rofi's dialect. The panel ramps linearly from
     # tint-over-glass to glass-desktop over the first ROFI_SHEEN_END intervals, then holds.
     stops = [to_hex(lerp(d["tint-over-glass"], glass, min(k, ROFI_SHEEN_END) / ROFI_SHEEN_END),
@@ -324,6 +325,9 @@ ISLAND_W, ISLAND_PAD, ISLAND_GAP = 368, 16, 8
 ISLAND_SIDE_W = 132                   # Discard / Delete it slot: "Delete it" needs ~130px at 14px
 ISLAND_STOP_H = 42
 ISLAND_STOP_W = ISLAND_W - 2 * ISLAND_PAD - ISLAND_GAP - ISLAND_SIDE_W     # 196
+# clipboard-ui §2 header chip: the warm core, height 46, radius 10. 136 fits the glyph + 8 +
+# "clipboard" in Bold Italic 14 px (Cartograph advance ~8.4 px) with 14 px either side.
+CLIP_CHIP_W, CLIP_CHIP_H, CLIP_CHIP_R = 136, 46, 10
 
 def coverage(px, py, w, h, r):
     """Share of pixel (px, py) inside a w×h rectangle with corner radius r, 4×4 supersampled."""
@@ -385,6 +389,8 @@ def bake(tok, der):
     s = float(tok["grain-strength"])
     images["shutter-60.png"] = bake_core(tok, 60, 60, 30, 160, s)
     images["core-stop.png"] = bake_core(tok, ISLAND_STOP_W, ISLAND_STOP_H, 12, 180, s)
+    # 4) clipboard-ui §2: the panel's header chip, the same core
+    images["core-chip.png"] = bake_core(tok, CLIP_CHIP_W, CLIP_CHIP_H, CLIP_CHIP_R, 160, s)
     return images
 
 def png_bytes(w, h, rgba):
