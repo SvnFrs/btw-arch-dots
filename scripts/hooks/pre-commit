@@ -36,6 +36,11 @@ if ! "$REPO/scripts/gen-keybindings.sh" --check >/dev/null 2>&1; then
   fail=1
 fi
 
+if ! python3 "$REPO/scripts/gen-theme.py" --check >/dev/null 2>&1; then
+  echo "pre-commit: the generated theme files are stale — run:  ./scripts/gen-theme.py" >&2
+  fail=1
+fi
+
 while IFS= read -r f; do
   [[ -f $REPO/$f ]] || continue
   if ! bash -n "$REPO/$f" 2>/dev/null; then

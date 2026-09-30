@@ -332,6 +332,25 @@ must be empty first). `font.rasi`'s `"JetBrains Mono NerdFont Bold 11"` is not a
   open, then the second press leaves no rofi, then a fresh open works (the lock is released).
   `window-switcher` is unchanged.
 
+**I5 record (2026-09-30).**
+- **Glyph audit (§6):** every private-use code point in `home/.config/rofi`, `home/.config/swaync`,
+  `home/.config/quickshell/enhalation` and `theme/templates`, checked against the installed
+  `CartographCFNerdFont-Regular.otf` (`fc-query --format '%{charset}'`, 11,731 code points).
+  There are **26 distinct code points, all in Cartograph** (and in the JetBrainsMono Nerd
+  fallback), and all 26 come from `GLYPHS`: nothing hand-typed is left (the old switcher's U+F10AC
+  went with I2). The §6 table lists them all.
+- **Removed** `rofi/config/font.rasi` and `catppuccin-mocha.rasi` (§4.3). A read-only check first
+  showed no importer under `home/`; `~/.config/rofi` is a `link` entry, so they are gone live too.
+- **Wiring:** `scripts/hooks/pre-commit` gets a block shaped like the keybindings one, and `dots
+  doctor` gets one `chk`/`bad` line, both for `gen-theme.py --check`. VERIFIED both ways: with a
+  comment appended to the generated `launcher.rasi`, the doctor shows ✗ and the hook blocks the
+  commit (exit 1). With the file restored byte for byte, both pass. The hooks are live
+  (`core.hooksPath = scripts/hooks`).
+- **`CLAUDE.md`:** the theming section is rewritten (what is generated, from where, the gate, the
+  `--check` wiring, `GLYPHS`, and what is still hand-kept), and the command list gains `gen-theme.py`
+  and `test-clipctl.py`. **README:** a short Theme section pointing here, plus `theme/`, the new
+  scripts and the three design docs in the layout tree.
+
 **I2 record (2026-09-30).**
 - `theme/templates/rofi/{window-switcher,clipboard,clipboard-delete}.rasi.in`, each a full file
   built from the launcher skeleton with the §4.2 values, are rendered by `gen-theme.py` into
@@ -461,9 +480,20 @@ Cartograph, not a fallback.
 |---|---|---|---|
 | `glyph.launch` | U+F135 | launcher chip | yes |
 | `glyph.windows` | U+F2D0 | switcher chip | yes |
-| `glyph.clip` | U+F0EA | clipboard chip | yes |
-| `glyph.delete` | U+F1F8 | clip-del chip | yes |
+| `glyph.clip` | U+F0EA | clipboard chips (rofi, panel), swaync Clipboard button | yes |
+| `glyph.delete` | U+F1F8 | clip-del chip, island Discard, panel delete / Clear all | yes |
 | `glyph.volume` | U+F028 | swaync volume label | yes |
+| `glyph.stop` / `play` / `check` | U+F04D / U+F04B / U+F00C | recording island | yes |
+| `glyph.copy` / `warn` / `folder-open` | U+F0C5 / U+F071 / U+F07C | island; `warn` also the panel's Open log | yes |
+| `glyph.area` / `screen` / `window` | U+F125 / U+F108 / U+F2D2 | capture Mode | yes |
+| `glyph.camera` / `record` | U+F030 / U+F111 | shutter; `camera` also swaync Screenshot | yes |
+| `glyph.photo` / `video` | U+F03E / U+F03D | capture Kind; `photo` the panel's Images, `video` swaync Record | yes |
+| `glyph.pointer` / `close` | U+F245 / U+F00D | capture toolbar | yes |
+| `glyph.search` / `link` / `code` / `text` | U+F002 / U+F0C1 / U+F121 / U+F036 | clipboard panel | yes |
+| `glyph.pin` / `undo` | U+F08D / U+F0E2 | clipboard panel | yes |
+
+*(I5, 2026-09-30)* The rows after `volume` were added with the capture UI and the clipboard panel;
+`GLYPHS` in `scripts/gen-theme.py` is the table the generator enforces.
 
 The generator refuses a glyph that is not in the table, and I5 audits every private-use code point
 in `home/.config/rofi`, `home/.config/swaync`, `theme/templates` against the installed Cartograph

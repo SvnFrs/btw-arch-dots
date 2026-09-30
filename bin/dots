@@ -439,6 +439,10 @@ PY
   if [[ -n $cur_wf && ! -d $HOME/.icons/$cur_wf && ! -d /usr/share/icons/$cur_wf ]]; then
     bad "cursor theme '$cur_wf' is not installed — run scripts/install-assets.sh"
   fi
+  # rofi, swaync and Quickshell are generated from theme/enhalation/ (docs/enhalation-desktop.md);
+  # a hand edit to a generated file, or a template change never rendered, shows here.
+  if python3 "$REPO/scripts/gen-theme.py" --check >/dev/null 2>&1; then chk "generated theme files match theme/enhalation (gen-theme --check)"
+  else bad "generated theme files are stale or hand-edited — run: ./scripts/gen-theme.py (then review git diff)"; fi
   # VS Code and Zed both name this family. It comes from the private fonts
   # repo (commercial font), which install-assets.sh clones and installs.
   if fc-list -q 'CartographCF Nerd Font' 2>/dev/null; then chk "editor font installed (CartographCF Nerd Font)"

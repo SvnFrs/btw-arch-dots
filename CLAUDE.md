@@ -45,7 +45,9 @@ cannot happen.
 ./scripts/build-wayfire.sh [--debug|--release]
 ./scripts/install-assets.sh
 ./scripts/gen-keybindings.sh [--check]    # docs/keybindings.md is GENERATED
-./scripts/hooks/install.sh                # pre-commit: drift + stale docs + shell syntax
+./scripts/gen-theme.py [--check]          # rofi / swaync / Quickshell themes are GENERATED
+./scripts/test-clipctl.py [-v]            # clipboard helper tests (throwaway state only)
+./scripts/hooks/install.sh                # pre-commit: drift + stale docs + stale theme + shell syntax
 ```
 
 Validation after touching a config (run against the live path):
@@ -165,13 +167,24 @@ thing that runs `cliphist` or `wl-copy` for it. The design is in
   - Before any destructive step, check `clipctl whereami` through the panel's `state()`.
   - Restart the normal instance afterwards.
 
-### Theming is duplicated by design
+### Theming: generated for the desktop surfaces, hand-kept everywhere else
 
-Catppuccin Mocha is hardcoded independently in kitty, rofi
-(`catppuccin-mocha.rasi`), btop, `FZF_DEFAULT_OPTS` in `.zshrc`, wayfire's RGBA
-tuples, the GTK settings, and `GRUB_THEME`. There is no shared color source;
-changing the theme means touching all of them. `.zshrc` deliberately sources the
-**macchiato** syntax-highlighting variant.
+Three sets of themes are **generated** by `./scripts/gen-theme.py` from `theme/enhalation/`
+(the Enhalation tokens, vendored — never edit `tokens.json`, `grain.svg` or `grain-220.pgm`):
+- rofi: the launcher, the window switcher and the clipboard pickers;
+- swaync: `style.css` and its baked assets;
+- the Quickshell UI: `Theme.qml` and its baked assets.
+
+The generator runs a contrast gate first and writes nothing if it fails. Edit
+`theme/templates/`, never a generated file: `gen-theme.py --check` (in the pre-commit hook and
+`dots doctor`) catches a hand edit as well as a template change that was never rendered. A
+private-use glyph must be named in the generator's `GLYPHS` table. All of them are in the
+installed Cartograph (the audit is in `docs/enhalation-desktop.md` §6, which is the design brief).
+
+Everything else is still hand-kept Catppuccin Mocha with no shared colour source: kitty, btop,
+`FZF_DEFAULT_OPTS` in `.zshrc`, wayfire's RGBA tuples, the GTK settings and `GRUB_THEME`. Changing
+the theme means touching all of them. `.zshrc` deliberately sources the **macchiato**
+syntax-highlighting variant.
 
 ### Assets
 

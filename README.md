@@ -57,11 +57,14 @@ btw-arch-dots/
 ├── bin/dots               deploy + drift tracking
 ├── home/                  → $HOME
 ├── system/                → /            (needs root)
+├── theme/                 Enhalation tokens (vendored) + templates for gen-theme.py
 ├── scripts/
 │   ├── bootstrap.sh       fresh machine → this desktop
 │   ├── build-wayfire.sh   compile the compositor this config needs
 │   ├── install-assets.sh  fonts + icon themes that are not vendored
 │   ├── gen-keybindings.sh regenerates docs/keybindings.md from wayfire.ini
+│   ├── gen-theme.py       renders the rofi / swaync / Quickshell themes from theme/
+│   ├── test-clipctl.py    tests for the clipboard panel's helper (throwaway state only)
 │   ├── hooks/             versioned git hooks (install.sh points git at them)
 │   └── packages/          base · shell · desktop · nvidia · wayfire-build
 └── docs/
@@ -69,13 +72,16 @@ btw-arch-dots/
     ├── hardware.md        GPU topology, outputs, power — read before touching displays
     ├── wayfire-build.md   why the compositor is built from source, and how
     ├── session.md         how the Wayfire session is wired together
+    ├── enhalation-desktop.md  the theme: rofi, swaync, the shared tokens
+    ├── capture-ui.md      screenshot overlay + recording island (Quickshell)
+    ├── clipboard-ui.md    clipboard panel (Quickshell + cliphist)
     └── keybindings.md     generated — do not hand-edit
 ```
 
 Optional, recommended:
 
 ```sh
-./scripts/hooks/install.sh   # pre-commit: blocks drift, stale keybinding docs, bad shell syntax
+./scripts/hooks/install.sh   # pre-commit: blocks drift, stale keybinding docs, stale theme files, bad shell syntax
 ```
 
 ---
@@ -145,6 +151,19 @@ For `link` entries there is nothing to pull or push — edit the file, then comm
 
 The `Graphite-Recolored-*` recolors and the `oreo_*` cursors **are** vendored,
 because they are not re-downloadable.
+
+---
+
+## Theme
+
+rofi, swaync and the Quickshell UI (the screenshot overlay, the recording island and the clipboard
+panel) share one visual language, **Enhalation**: Catppuccin Mocha, glass panels, and one warm
+accent per view. It is specified in [`docs/enhalation-desktop.md`](docs/enhalation-desktop.md).
+Their themes are generated: `./scripts/gen-theme.py` renders `theme/templates/` from the tokens in
+`theme/enhalation/`, after a contrast check. Edit the templates, not the generated files; the
+pre-commit hook and `dots doctor` catch it if you do. The Quickshell pieces have their own specs:
+[`docs/capture-ui.md`](docs/capture-ui.md) and [`docs/clipboard-ui.md`](docs/clipboard-ui.md).
+Everything else (kitty, btop, GTK, GRUB, …) is hand-kept Catppuccin Mocha.
 
 ---
 

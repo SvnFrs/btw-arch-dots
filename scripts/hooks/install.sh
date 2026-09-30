@@ -5,4 +5,4 @@ REPO="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 chmod +x "$REPO/scripts/hooks/pre-commit"
 git -C "$REPO" config core.hooksPath scripts/hooks
 echo "core.hooksPath -> scripts/hooks"
-echo "pre-commit will now check drift, keybinding docs, and shell syntax."
+echo "pre-commit will now check drift, keybinding docs, generated theme files, and shell syntax."
