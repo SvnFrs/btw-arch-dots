@@ -1,6 +1,6 @@
 # Clipboard panel — cliphist in Quickshell
 
-**Status:** Proposed · **Date:** 2026-09-29 · **Owner:** Tyler (@SvnFrs)
+**Status:** Built, K0–K4 (2026-09-30) · **Date:** 2026-09-29 · **Owner:** Tyler (@SvnFrs)
 **Depends on:** `docs/enhalation-desktop.md` (tokens, desktop profile, §3.4 pairing rules) and
 `docs/capture-ui.md` (the `enhalation` Quickshell config, `Theme.qml`, `GlassPanel.qml`).
 **Visual target:** `docs/clipboard-ui-preview.png` (a browser mock; the clip data is invented).
@@ -380,6 +380,27 @@ rollback line.
     - Clear all dims when the history is empty.
 - **K4:** motion tuning, the swaync button (with capture-ui C4), and `CLAUDE.md`: the pins
   location, the thumb cache, and the `actions.sh` routing.
+
+  **K4 record (2026-09-30).**
+  - **Motion**, checked against §2 and its tokens:
+    - open 280 ms ease-out-expo, scale .97 → 1 + fade;
+    - the first 8 rows cascade in, 24 ms apart;
+    - close 150 ms ease-exit;
+    - the pill glides in 420 ms ease-spring.
+  - **Delete fixed:** before, the removed row faded while the rows below slid over it. Now it
+    **collapses**: height + opacity, 180 ms ease-out-expo. `ListView.delayRemove` holds its slot
+    until then, so the rows below follow its height up, and the row clips its content only while
+    collapsing. VERIFIED by grabs mid-delete: the row at half height and faded, the next row
+    following, nothing overlapping.
+  - **The swaync Clipboard button** (U+F0EA) joins Screenshot and Record, three to a row. Its command
+    is `setsid -f bash ~/.config/swaync/actions.sh clip open`: it closes the control centre, then
+    calls the idempotent IPC `open` (the button never toggles; the keys use `toggle`). The rofi
+    fallback is unchanged. VERIFIED by running the command as swaync does (`/bin/sh -c "<command>"`)
+    against a synthetic panel: the control centre closed, the panel opened, and a second run left it
+    open. The three glass pills fit one row.
+  - **`CLAUDE.md`:** the routing, the pins location (plaintext on disk, like cliphist's db), the
+    cache's contents and lifetimes, and the testing rules (synthetic Quickshell, `wl-copy` stub,
+    the `whereami` guard).
 
 ## 5. Later
 

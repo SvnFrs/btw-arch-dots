@@ -45,7 +45,7 @@
       "show-per-app": false
     },
     "buttons-grid": {
-      "buttons-per-row": 2,
+      "buttons-per-row": 3,
       "actions": [
         { "label": "  Screenshot", "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area photo" },
         {
@@ -53,7 +53,8 @@
           "type": "toggle",
           "command": "setsid -f bash ~/.config/swaync/actions.sh capture-open area video",
           "update-command": "bash ~/.config/swaync/actions.sh rec-active"
-        }
+        },
+        { "label": "  Clipboard", "command": "setsid -f bash ~/.config/swaync/actions.sh clip open" }
       ]
     },
     "mpris": {

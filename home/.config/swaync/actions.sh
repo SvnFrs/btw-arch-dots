@@ -3,7 +3,7 @@
 # The "heavy" swaync actions (screenshot / screen recording), kept out of
 # config.json.
 #
-# Usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>
+# Usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip [open]|clip-del|vol-up|vol-down|vol-mute|mic-mute>
 #
 # WHY A SEPARATE FILE:
 #   1. Nobody can debug a multi-command pipeline stuffed into a JSON string:
@@ -184,14 +184,17 @@ print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
 qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }
 island_up() { qs_call rec ping >/dev/null 2>&1; }
 
-# The clipboard panel (docs/clipboard-ui.md), for `clip` and `clip-del`: `toggle`, so pressing
-# Super+V again hides it. rofi is the fallback ONLY when the panel does not answer ping; if it
-# answers but `toggle` fails, report it and stop — never two UIs (the capture overlay's rule).
+# The clipboard panel (docs/clipboard-ui.md), for `clip` and `clip-del`. $1 = toggle (the keys:
+# pressing Super+V again hides it) or open (the swaync button: it closes the control centre and
+# always opens). rofi is the fallback ONLY when the panel does not answer ping; if it answers but
+# the call fails, report it and stop — never two UIs (the capture overlay's rule).
 # Returns 0 when this call handled it, 1 to fall back.
 clip_panel() {
+  local how=${1:-toggle}
   qs_call clip ping >/dev/null 2>&1 || return 1
-  qs_call clip toggle >/dev/null && return 0
-  echo "clip toggle failed although Quickshell answers ping: no fallback"
+  [[ $how == open ]] && close_panel
+  qs_call clip "$how" >/dev/null && return 0
+  echo "clip $how failed although Quickshell answers ping: no fallback"
   notify "Clipboard" "The panel did not open - see $LOG"
   return 0
 }
@@ -488,7 +491,8 @@ $cal_out"
   # on Esc rofi prints an empty string, decode returns nothing, and wl-copy WIPES the
   # current clipboard. Catch that and exit early.
   clip)
-      clip_panel && exit 0
+      how=toggle; [[ ${2:-} == open ]] && how=open      # open = the swaync button
+      clip_panel "$how" && exit 0
       sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "clipboard" \
               -theme "$ROFI_THEME") || exit 0
       [[ -n $sel ]] || { echo "rofi: cancelled by the user"; exit 0; }
@@ -505,7 +509,7 @@ $cal_out"
       ;;
 
   *)
-      echo "usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
+      echo "usage: actions.sh <snip|shot|capture-open <area|screen|window> <photo|video>|shot-crop x y w h [cursor]|rec|rec-area|rec-start [geometry]|rec-stop|rec-discard|rec-active|cal|clip [open]|clip-del|vol-up|vol-down|vol-mute|mic-mute>"
       exit 2
       ;;
 esac

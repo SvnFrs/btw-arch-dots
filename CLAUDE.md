@@ -122,6 +122,33 @@ through ALSA under PipeWire, per-channel rounding drift, `wf-recorder -a` with a
 space being silently ignored, `xdg-user-dir` returning `$HOME`). Read them before
 changing volume or capture behaviour — those are all easy to reintroduce.
 
+`clip` / `clip-del` (Super+V, Super+Shift+V) open the Quickshell clipboard panel over IPC
+(`toggle`; the swaync Clipboard button uses `clip open`). They fall back to the rofi picker
+**only** when the panel does not answer `ping`. If it answers but the call fails, they log and notify
+instead, so there are never two UIs. This is the same rule as `capture-open`.
+
+### The clipboard panel (Quickshell)
+
+`~/.config/quickshell/enhalation/ClipPanel.qml` is the panel. `bin/clipctl` beside it is the only
+thing that runs `cliphist` or `wl-copy` for it. The design is in
+[`docs/clipboard-ui.md`](docs/clipboard-ui.md). cliphist stays the store (`~/.cache/cliphist/db`).
+
+- **Pins** live in `$XDG_DATA_HOME/enhalation/clip-pins/` (`index.json` plus one file per pin, at
+  most 20). They are **plaintext on disk**, just like cliphist's own db.
+- **Cache** is `$XDG_RUNTIME_DIR/enhalation/clip/` (tmpfs, mode 0700). It holds `thumb-<id>.png`
+  (at most 168×96), one `preview.<fmt>` plus `preview.ref`, and the undo stash. The stash is
+  deleted when the 6 s undo window ends, when the panel closes, and on Clear all. `list` prunes
+  thumbs for ids that are gone. Deleting a clip also removes its thumb and its preview.
+- **Tests:** `./scripts/test-clipctl.py`. It runs against a throwaway db, runtime dir and data home,
+  plus a private headless Wayfire, so it never touches the real clipboard. **Never test against the
+  real history**, which is hundreds of MB and has no undo for a wipe.
+  - On-screen checks run a separate synthetic Quickshell with `CLIPHIST_DB_PATH`, a private
+    `XDG_DATA_HOME` and `XDG_RUNTIME_DIR`, and an absolute `WAYLAND_DISPLAY`. `qs` matches instances
+    by display, so every `qs ipc` call to it needs the same env.
+  - Put a `wl-copy` stub first on its `PATH`.
+  - Before any destructive step, check `clipctl whereami` through the panel's `state()`.
+  - Restart the normal instance afterwards.
+
 ### Theming is duplicated by design
 
 Catppuccin Mocha is hardcoded independently in kitty, rofi

@@ -407,7 +407,7 @@ surface (§3 "Hint"), and nothing may use a pair listed in `FORBIDDEN`.
 | Super+PrtSc | recording → `rec-stop`; else `capture-open area video` |
 | Super+Shift+S | unchanged: instant `snip` via slurp (no-UI path, keeps working without Quickshell) |
 | Shift+Super+PrtSc | unchanged: `rec-area` |
-| Mouse | swaync control centre gets two glass buttons (swaync `buttons-grid`): "Screenshot" (U+F030) and "Record" (U+F03D) → `capture-open area photo/video`. *(C4)* Record is a toggle: while recording it shows `danger` and a press stops the recording |
+| Mouse | swaync control centre gets two glass buttons (swaync `buttons-grid`): "Screenshot" (U+F030) and "Record" (U+F03D) → `capture-open area photo/video` *(clipboard-ui K4 adds a third, "Clipboard", three to a row)*. *(C4)* Record is a toggle: while recording it shows `danger` and a press stops the recording |
 | Mouse | clicking the island (§4) |
 
 `wayfire.ini` edits follow the brief's inode rules: write in place, then verify **over IPC**

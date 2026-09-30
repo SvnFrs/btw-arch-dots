@@ -620,15 +620,6 @@ Scope {
                             model: rows
                             currentIndex: cb.selected
                             cacheBuffer: 132                    // two image rows: thumbs only near the view
-                            // delete: the row fades out over 180 ms and the list closes the gap
-                            remove: Transition {
-                                NumberAnimation { property: "opacity"; to: 0; duration: 180
-                                                  easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
-                            }
-                            displaced: Transition {
-                                NumberAnimation { property: "y"; duration: 180
-                                                  easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
-                            }
                             boundsBehavior: Flickable.StopAtBounds
                             highlightFollowsCurrentItem: false
                             highlight: Rectangle {              // ONE pill that glides (420 ms spring)
@@ -675,6 +666,7 @@ Scope {
                                 property string thumbRef: ""
                                 width: list.width
                                 height: isImage ? 66 : 42
+                                clip: collapse.running              // a shrinking row keeps its content inside
 
                                 // the first 8 rows after an open cascade in, 24 ms apart
                                 opacity: 1
@@ -683,6 +675,21 @@ Scope {
                                     if (cb.cascade && index < 8) { opacity = 0; cascadeIn.start(); }
                                 }
                                 Component.onDestruction: if (thumbRef) cb.unwantThumb(thumbRef)
+                                // delete (§2 Motion): the row collapses, height + opacity over 180 ms
+                                // ease-out-expo, holding its slot until then, so the rows below follow its
+                                // height up and nothing overlaps the fading row
+                                ListView.onRemove: collapse.start()
+                                SequentialAnimation {
+                                    id: collapse
+                                    PropertyAction { target: row; property: "ListView.delayRemove"; value: true }
+                                    ParallelAnimation {
+                                        NumberAnimation { target: row; property: "height"; to: 0; duration: 180
+                                                          easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
+                                        NumberAnimation { target: row; property: "opacity"; to: 0; duration: 180
+                                                          easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
+                                    }
+                                    PropertyAction { target: row; property: "ListView.delayRemove"; value: false }
+                                }
                                 SequentialAnimation {
                                     id: cascadeIn
                                     PauseAnimation { duration: Math.max(0, row.index) * 24 }   // index is -1 while a row is removed
