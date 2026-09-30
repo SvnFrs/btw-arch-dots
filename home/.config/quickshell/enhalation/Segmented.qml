@@ -7,11 +7,14 @@ import Quickshell.Widgets
 Item {
     id: root
 
-    property var options: []            // [{ key, glyph, label, enabled, count }]; glyph and count optional
+    property var options: []            // [{ key, glyph, label, enabled }]; glyph optional
+    property var counts: ({})           // optional { key: number }, shown after the label. Kept out of
+                                        // `options` so a count change never rebuilds the options.
     property string current: ""
     signal picked(string key)
 
     readonly property int currentIndex: root.options.findIndex(o => o.key === root.current)
+    property int itemsVersion: 0        // bumped when the Repeater (re)creates items
 
     implicitWidth: row.implicitWidth + 8
     implicitHeight: 48
@@ -31,7 +34,9 @@ Item {
     }
 
     Rectangle {                          // the gliding selection pill
-        readonly property Item target: root.currentIndex >= 0 ? optionItems.itemAt(root.currentIndex) : null
+        // itemAt() is a call, not a property: re-resolve when the items are rebuilt, or the pill
+        // keeps pointing at a destroyed item and stays hidden (seen on the clipboard's "All").
+        readonly property Item target: { root.itemsVersion; return root.currentIndex >= 0 ? optionItems.itemAt(root.currentIndex) : null; }
         visible: target !== null
         x: target ? target.x + 4 : 4
         y: 4
@@ -56,6 +61,7 @@ Item {
         Repeater {
             id: optionItems
             model: root.options
+            onItemAdded: root.itemsVersion++
             Item {
                 required property var modelData
                 readonly property bool selected: modelData.key === root.current
@@ -80,9 +86,9 @@ Item {
                         color: selected ? Theme.ink : Theme.inkMuted
                     }
                     Text {                                  // clipboard filter counts: ink-muted 12 px
-                        visible: modelData.count !== undefined
+                        visible: root.counts[modelData.key] !== undefined
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.count !== undefined ? String(modelData.count) : ""
+                        text: root.counts[modelData.key] !== undefined ? String(root.counts[modelData.key]) : ""
                         font.family: Theme.font; font.pixelSize: 12
                         color: Theme.inkMuted
                     }

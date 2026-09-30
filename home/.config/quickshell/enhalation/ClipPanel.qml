@@ -519,10 +519,11 @@ Scope {
                             id: filterSeg
                             anchors.verticalCenter: parent.verticalCenter
                             current: cb.filter
+                            counts: cb.counts                 // keys all / text / image, as the options
                             options: [
-                                { key: "all", label: "All", count: cb.counts.all },
-                                { key: "text", label: "Text", count: cb.counts.text },
-                                { key: "image", glyph: Theme.gPhoto, label: "Images", count: cb.counts.image }
+                                { key: "all", label: "All" },
+                                { key: "text", label: "Text" },
+                                { key: "image", glyph: Theme.gPhoto, label: "Images" }
                             ]
                             onPicked: (key) => { cb.filter = key; search.forceActiveFocus(); }
                         }
