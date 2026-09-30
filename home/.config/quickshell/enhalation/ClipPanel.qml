@@ -236,14 +236,19 @@ Scope {
         });
     }
     Timer { id: disarm; interval: 3000; onTriggered: cb.clearArmed = false }
+    // Before a row leaves: the list pins the pill to the row's slot when the next row slides into
+    // it (keepSlot), so the pill never springs past it (Tyler: it overshot to the bottom).
+    signal rowRemoving(int index, bool keepSlot)
     function dropItem(key) {                    // remove one row in place, so it can collapse
         items = items.filter(x => x.key !== key);
         const j = shown.findIndex(x => x.key === key);
         if (j < 0) return;
+        rowRemoving(j, j === selected && j < shown.length - 1);
+        const sel = selected;
         shown = shown.filter(x => x.key !== key);
         recount();
         rows.remove(j);
-        selected = shown.length ? Math.min(j, shown.length - 1) : -1;
+        selected = !shown.length ? -1 : j < sel ? sel - 1 : Math.min(sel, shown.length - 1);
     }
     Timer { id: cascadeOff; interval: 500; onTriggered: cb.cascade = false }
 
@@ -622,14 +627,35 @@ Scope {
                             cacheBuffer: 132                    // two image rows: thumbs only near the view
                             boundsBehavior: Flickable.StopAtBounds
                             highlightFollowsCurrentItem: false
+                            // a delete: the pill holds the slot (or glides up if it was the last row) with the
+                            // collapse's 180 ms ease-out-expo, never the spring, so it cannot overshoot
+                            property bool collapsing: false
+                            property bool pinSlot: false
+                            property real pinY: 0
+                            Timer { id: collapseEnd; interval: 200; onTriggered: list.collapsing = false }
+                            Connections {
+                                target: cb
+                                function onRowRemoving(i, keepSlot) {
+                                    list.pinY = list.currentItem ? list.currentItem.y : 0;
+                                    list.pinSlot = keepSlot;
+                                    list.collapsing = true;
+                                    collapseEnd.restart();
+                                }
+                            }
                             highlight: Rectangle {              // ONE pill that glides (420 ms spring)
-                                y: list.currentItem ? list.currentItem.y : 0
+                                y: list.collapsing && list.pinSlot ? list.pinY : list.currentItem ? list.currentItem.y : 0
                                 width: list.width
                                 height: list.currentItem ? list.currentItem.height : 0
                                 radius: 10
                                 color: Theme.pill
-                                Behavior on y { NumberAnimation { duration: Theme.durSlide; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSpring } }
-                                Behavior on height { NumberAnimation { duration: Theme.durSlide; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeSpring } }
+                                Behavior on y {
+                                    NumberAnimation { duration: list.collapsing ? 180 : Theme.durSlide; easing.type: Easing.BezierSpline
+                                                      easing.bezierCurve: list.collapsing ? Theme.easeOutExpo : Theme.easeSpring }
+                                }
+                                Behavior on height {
+                                    NumberAnimation { duration: list.collapsing ? 180 : Theme.durSlide; easing.type: Easing.BezierSpline
+                                                      easing.bezierCurve: list.collapsing ? Theme.easeOutExpo : Theme.easeSpring }
+                                }
                                 ClippingRectangle {
                                     anchors.fill: parent
                                     radius: parent.radius

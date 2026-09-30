@@ -392,6 +392,15 @@ rollback line.
     until then, so the rows below follow its height up, and the row clips its content only while
     collapsing. VERIFIED by grabs mid-delete: the row at half height and faded, the next row
     following, nothing overlapping.
+  - *(fix, from Tyler: "the indicator overshoots to the bottom a little")* On a delete, the selection
+    moves to the next row, which starts one row lower and rides up as the deleted row collapses.
+    The pill chased it with the 420 ms spring, which overshoots by design. Now, during a delete,
+    the pill **holds the deleted row's slot** and only eases its height to the new row's (180 ms
+    ease-out-expo, never the spring). Deleting the last row glides up on the same curve. Hover
+    keeps the spring. VERIFIED by tracing the pill over 27 frames per delete (synthetic):
+    - text → image row: the top held at 187; the bottom eased 226 → 242 → 247 → 249 and stopped at
+      its final 249, **0 px of overshoot**;
+    - text → text: the pill did not move.
   - **The swaync Clipboard button** (U+F0EA) joins Screenshot and Record, three to a row. Its command
     is `setsid -f bash ~/.config/swaync/actions.sh clip open`: it closes the control centre, then
     calls the idempotent IPC `open` (the button never toggles; the keys use `toggle`). The rofi
