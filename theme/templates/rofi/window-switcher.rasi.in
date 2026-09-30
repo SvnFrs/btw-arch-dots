@@ -1,0 +1,58 @@
+/* rofi window switcher (bin/window-switcher, <super> Tab). docs/enhalation-desktop.md §4.
+ * Literal values only (DP4): rofi cannot use @variables in gradients or `highlight`.
+ * `active` rows are the focused window: spark, the one thing teal stands for (§3.3). */
+@theme "/dev/null"
+
+configuration {
+    font:            "CartographCF Nerd Font, JetBrainsMono Nerd Font 11";
+    show-icons:      true;
+    hover-select:    true;            /* the pill follows the pointer */
+    me-select-entry: "";
+    me-accept-entry: "MousePrimary";  /* one click focuses */
+    display-window:  "windows";
+    click-to-exit:   true;
+}
+
+* { background-color: transparent; text-color: {{ink}}; }
+
+window {
+    width: 860px;  border: 1px;  border-radius: 26px;  border-color: {{rim}};
+    background-color: transparent;
+    background-image: {{rofi-panel-gradient}};   /* DP9: rofi's angle and even stops */
+    cursor: default;
+}
+mainbox {                             /* lit top edge, standing in for inset 0 1px 0 glass-edge */
+    padding: 16px;  spacing: 10px;
+    border: 1px 0 0 0;  border-radius: 25px;  border-color: {{glass-edge}};
+    children: [ "inputbar", "message", "listview" ];
+}
+inputbar { spacing: 10px; children: [ "chip", "entry" ]; }
+chip {                                /* custom box: the warm core */
+    orientation: horizontal;  expand: false;  spacing: 8px;
+    padding: 12px 16px;  border-radius: 10px;
+    background-image: {{rofi-core-gradient}};
+    children: [ "textbox-glyph", "prompt" ];
+}
+/* Nerd v3 icons draw past their one-cell advance and rofi clips at the textbox:
+   the right padding gives the overflow room (DP9). */
+textbox-glyph { str: "{{glyph.windows}}"; expand: false; padding: 0 9px 0 0; text-color: {{on-halo}}; vertical-align: 0.5; }
+prompt        { text-color: {{on-halo}}; font: "CartographCF Nerd Font Bold Italic 11"; vertical-align: 0.5; }
+entry {
+    padding: 12px 16px;  border: 0 0 2px 0;  border-color: {{line-strong}};  border-radius: 10px;
+    background-color: {{well}};  placeholder: "kitty, spread-overview…";  placeholder-color: {{ink-muted}};
+    cursor: text;  vertical-align: 0.5;
+}
+message { padding: 10px 14px; border-radius: 10px; background-color: {{well}}; }
+textbox { text-color: {{ink-muted}}; }
+listview { columns: 1; lines: 6; spacing: 4px; fixed-height: true; cursor: default; }
+element  { padding: 10px 14px; spacing: 12px; border: 1px 0 0 0; border-radius: 10px;
+           border-color: transparent; cursor: pointer; }
+element normal.normal, element alternate.normal  { background-color: transparent; text-color: {{ink}}; }
+element selected.normal   { background-color: {{pill}}; border-color: {{pill-top}}; text-color: {{ink}}; }
+element normal.urgent, element alternate.urgent  { background-color: {{danger-soft}}; text-color: {{danger}}; }
+element selected.urgent   { background-color: {{danger-soft}}; border-color: {{pill-top}}; text-color: {{ink}}; }
+element normal.active, element alternate.active  { text-color: {{spark}}; }
+element selected.active   { background-color: {{pill}}; border-color: {{pill-top}}; text-color: {{spark}}; }
+element-icon { size: 24px; cursor: inherit; }
+element-text { text-color: inherit; highlight: bold {{accent}}; vertical-align: 0.5; cursor: inherit; }
+/* No per-state font: rofi 2.0 ignores it on rows (§10), so the pill alone marks the selection. */

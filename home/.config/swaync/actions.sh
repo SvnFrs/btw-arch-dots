@@ -101,6 +101,7 @@ VID="$(xdg_dir VIDEOS Videos)/Recordings"
 # back to its built-in theme (plain background, square corners — an unriced dmenu look).
 # Point straight at the theme file. To use another of your themes, change this line.
 ROFI_THEME="${ROFI_THEME:-$HOME/.config/rofi/config/clipboard.rasi}"
+ROFI_THEME_DEL="${ROFI_THEME_DEL:-$HOME/.config/rofi/config/clipboard-delete.rasi}"   # the danger chip
 
 # notify-send must never kill the script when the daemon isn't ready yet
 notify() { notify-send -a swaync "$1" "$2" || true; }
@@ -506,7 +507,7 @@ $cal_out"
   clip-del)
       clip_panel && exit 0                 # the panel deletes on hover / Del
       sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "delete" \
-              -mesg "Pick an entry to delete from the history" -theme "$ROFI_THEME") || exit 0
+              -mesg "Pick an entry to delete from the history" -theme "$ROFI_THEME_DEL") || exit 0
       [[ -n $sel ]] || exit 0
       printf '%s' "$sel" | cliphist delete
       ;;

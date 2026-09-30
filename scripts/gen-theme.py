@@ -30,6 +30,9 @@ TEMPLATES = os.path.join(REPO, "theme", "templates")
 # `link` entries in dots.conf, so writing them changes the running desktop.
 OUTPUTS = {
     "rofi/launcher.rasi.in": "home/.config/rofi/config/launcher.rasi",
+    "rofi/window-switcher.rasi.in": "home/.config/rofi/config/window-switcher.rasi",
+    "rofi/clipboard.rasi.in": "home/.config/rofi/config/clipboard.rasi",
+    "rofi/clipboard-delete.rasi.in": "home/.config/rofi/config/clipboard-delete.rasi",
     "swaync/style.css.in": "home/.config/swaync/style.css",
     "quickshell/Theme.qml.in": "home/.config/quickshell/enhalation/Theme.qml",
 }

@@ -332,6 +332,30 @@ must be empty first). `font.rasi`'s `"JetBrains Mono NerdFont Bold 11"` is not a
   open, then the second press leaves no rofi, then a fresh open works (the lock is released).
   `window-switcher` is unchanged.
 
+**I2 record (2026-09-30).**
+- `theme/templates/rofi/{window-switcher,clipboard,clipboard-delete}.rasi.in`, each a full file
+  built from the launcher skeleton with the §4.2 values, are rendered by `gen-theme.py` into
+  `home/.config/rofi/config/`. They replace the hand-written switcher and clipboard themes, which
+  were the last files to import `font.rasi` and `catppuccin-mocha.rasi`; nothing under `home/`
+  imports those now (I5 removes them).
+  - The window switcher: the `windows` chip, icons, and `active` in spark.
+  - The clipboard pickers: 980 px, 12 lines, no icons, the `thumb` scrollbar. `clipboard-delete`
+    has the danger chip and the `-mesg` bar.
+- The clipboard pickers are the **fallback** now: they run only when the Quickshell panel does not
+  answer `ping` (docs/clipboard-ui.md).
+- §4.4 in `actions.sh`: `ROFI_THEME_DEL`, and `clip-del` uses it (the `-mesg` was already English).
+  `bash -n` passes.
+- §8.3: all four themes parse, with `rofi -dump-theme` exit 0 and **0 lines** on stderr.
+- §8.7 screenshots (the clipboard pickers on a synthetic 750-entry history; the screenshots were
+  deleted after the check):
+  - the switcher filtered to `kitty`: the chip, the accent match highlight, icons, the pill on the
+    first row;
+  - the clipboard picker: the warm chip, accent matches, the thin scrollbar;
+  - the delete picker: the danger chip in `danger` on `danger-soft`, the message bar.
+  - Observed: `{w}` renders empty in rofi's Wayland window mode, so the preview's workspace number
+    does not show. §4.2 already makes it optional, and `bin/window-switcher` is unchanged.
+- §8.6 is Tyler's mouse test.
+
 ## 5. swaync — NORMATIVE
 
 Before writing CSS, read the installed default (`pacman -Q swaync`; `/etc/xdg/swaync/style.css`)
