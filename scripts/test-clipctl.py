@@ -245,7 +245,9 @@ class PreviewTests(Base):
             self.assertEqual(f.read(), decode(a), "full size, byte for byte")
         pb = ok("preview", str(b))
         self.assertEqual(pb["path"], os.path.join(CACHE, "preview.jpeg"))
-        self.assertEqual([n for n in cache_files() if n.startswith("preview.")], ["preview.jpeg"])
+        self.assertEqual([n for n in cache_files() if n.startswith("preview.")], ["preview.jpeg", "preview.ref"])
+        with open(os.path.join(CACHE, "preview.ref")) as f:
+            self.assertEqual(f.read(), str(b), "preview.ref names the clip the preview belongs to")
 
     def test_text_is_refused(self):
         self.assertEqual(ctl("preview", str(store("synthetic text")))[0], 1)
@@ -320,6 +322,36 @@ class DeleteUndoTests(Base):
         for bad in ("", "x", "99999"):
             self.assertEqual(ctl("delete", bad)[0], 1, repr(bad))
         self.assertEqual(len(ok("list")["items"]), 1)
+
+
+class DeletedMeansGoneTests(Base):              # K3 safety rule 3
+    def test_forget_removes_the_stash(self):
+        ok("delete", str(store("synthetic to forget")))
+        self.assertTrue(os.path.exists(os.path.join(CACHE, "undo.bin")))
+        self.assertTrue(ok("forget")["had"])
+        for name in ("undo.bin", "undo.json"):
+            self.assertFalse(os.path.exists(os.path.join(CACHE, name)))
+        self.assertFalse(ok("forget")["had"])
+        self.assertEqual(ctl("undo")[0], 1, "nothing to undo once forgotten")
+
+    def test_delete_clears_its_own_preview_only(self):
+        a, b = store(image(800, 600)), store(image(64, 48, "jpg"))
+        ok("preview", str(a))
+        ok("delete", str(b))                           # not the preview's clip: it stays
+        self.assertIn("preview.png", cache_files())
+        ok("delete", str(a))                           # the preview's clip: preview.* goes
+        self.assertEqual([n for n in cache_files() if n.startswith("preview.")], [])
+
+    def test_wipe_removes_the_stash(self):
+        ok("delete", str(store("synthetic stash")))
+        ok("wipe")
+        self.assertIsNone(cache_files())
+
+
+class WhereamiTests(Base):                          # K3 safety rule 2
+    def test_paths(self):
+        self.assertEqual(ok("whereami"), {"db": ENV["CLIPHIST_DB_PATH"], "data_home": ENV["XDG_DATA_HOME"],
+                                          "runtime": RUN})
 
 
 class PinTests(Base):

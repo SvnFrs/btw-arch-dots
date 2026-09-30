@@ -4,10 +4,11 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 
-// docs/clipboard-ui.md: the clipboard panel over cliphist. K2 is read-only: list, filter, search,
-// preview, the gliding pill, empty and error states. Every cliphist call goes through bin/clipctl.
-// Nothing here writes the clipboard, so closing by any path (Esc, outside click, focus loss,
-// `clip close`) copies nothing. Clip text is always PlainText: a clip is data, never markup.
+// docs/clipboard-ui.md: the clipboard panel over cliphist. List, filter, search, preview, the
+// gliding pill, empty and error states (K2); copy, delete + undo, pin, Clear all and keys (K3).
+// Every cliphist / wl-copy call goes through bin/clipctl. Only an explicit copy (click, Enter)
+// writes the clipboard: closing by any path (Esc, outside click, focus loss, `clip close`) copies
+// nothing. Clip text is always PlainText: a clip is data, never markup.
 Scope {
     id: cb
 
@@ -58,6 +59,19 @@ Scope {
     property int thumbMaxInFlight: 0
     property int thumbDropped: 0
     property int previewDropped: 0
+    property int copies: 0
+    property int deletes: 0
+    property int undos: 0
+    property int wipes: 0
+
+    // K3 actions
+    property var where: null                    // clipctl whereami: {db, data_home, runtime}
+    property bool undoOpen: false               // one delete can be undone, for 6 s
+    property string undoLabel: ""
+    property bool clearArmed: false             // Clear all: the first click arms it for 3 s
+    property string notice: ""                  // a short footer message, 6 s (never clip text)
+    readonly property int historyCount: items.filter(i => !i.pinned).length
+    Component.onCompleted: run(["whereami"], r => { cb.where = r.error ? null : r; })
 
     // ── clipctl ───────────────────────────────────────────────────────────────────────────
     Component {
@@ -97,22 +111,9 @@ Scope {
         serial++;
         const s = serial;
         opening = true; loading = true; error = "";
-        query = ""; filter = "all"; preview = null;
+        query = ""; filter = "all"; preview = null; notice = ""; clearArmed = false;
         items = []; refilter();
-        listRuns++;
-        let list = null, pins = null;
-        const merge = () => {
-            if (s !== serial || list === null || pins === null) return;
-            loading = false;
-            const bad = list.error || pins.error;
-            if (bad) { error = bad; logError(bad); return; }
-            items = pins.items.map(p => entry(p, true)).concat(list.items.map(i => entry(i, false)));
-            cascade = true;
-            cascadeOff.restart();
-            refilter();
-        };
-        run(["list"], r => { list = r; merge(); });
-        run(["pins"], r => { pins = r; merge(); });
+        relist(true);
         // the focused output, from Wayfire (the panel opens where you are)
         run(["python3", "-c", "from wayfire import WayfireSocket\nprint(WayfireSocket().get_focused_output()['name'])"], t => {
             if (s !== serial) return;
@@ -123,6 +124,23 @@ Scope {
             open = true;
         }, true);
     }
+    // clipctl list + pins, every open and after undo / pin / wipe (undo returns under a NEW id)
+    function relist(first) {
+        const s = serial;
+        listRuns++;
+        let list = null, pins = null;
+        const merge = () => {
+            if (s !== serial || list === null || pins === null) return;
+            loading = false;
+            const bad = list.error || pins.error;
+            if (bad) { error = bad; logError(bad); return; }
+            items = pins.items.map(p => entry(p, true)).concat(list.items.map(i => entry(i, false)));
+            if (first) { cascade = true; cascadeOff.restart(); }
+            refilter();
+        };
+        run(["list"], r => { list = r; merge(); });
+        run(["pins"], r => { pins = r; merge(); });
+    }
     function hide() {
         if (!open && !opening) return;
         open = false;
@@ -131,6 +149,101 @@ Scope {
         previewTimer.stop();
         thumbDropped += thumbQueue.length;
         thumbQueue = [];
+        endUndo();                              // closing ends the undo window: the stash goes
+        clearArmed = false;
+    }
+
+    // ── actions (K3) ──────────────────────────────────────────────────────────────────────
+    function say(msg) { notice = msg; noticeTimer.restart(); }
+    Timer { id: noticeTimer; interval: 6000; onTriggered: cb.notice = "" }
+
+    function activate(i) {                      // click / Enter: copy, then close (150 ms)
+        const it = shown[i];
+        if (!it) return;
+        selected = i;
+        const s = serial;
+        run(it.pinned ? ["copy-pin", it.ref.slice(4)] : ["copy", it.ref], r => {
+            if (s !== serial) return;
+            if (r.error) { cb.say("Couldn't copy — see the log"); cb.logError(r.error); return; }
+            cb.copies++;
+            cb.hide();
+        });
+    }
+    function remove(i) {                        // delete button / Delete: history rows can be undone
+        const it = shown[i];
+        if (!it) return;
+        if (it.pinned) { togglePin(i); return; }   // a pin is removed by unpinning it
+        const s = serial;
+        run(["delete", it.ref], r => {
+            if (s !== serial) return;
+            if (r.error) { cb.say("Couldn't delete — see the log"); cb.logError(r.error); return; }
+            cb.deletes++;
+            cb.dropItem(it.key);
+            cb.undoLabel = it.kind === "image" ? it.meta : it.preview;
+            cb.notice = "";
+            cb.undoOpen = true;
+            undoTimer.restart();
+        });
+    }
+    function undo() {
+        if (!undoOpen) return;
+        undoOpen = false;
+        undoTimer.stop();
+        const s = serial;
+        run(["undo"], r => {
+            if (s !== serial) return;
+            if (r.error) { cb.say("Couldn't undo — see the log"); cb.logError(r.error); return; }
+            cb.undos++;
+            cb.relist(false);
+        });
+    }
+    function endUndo() {                        // the window ended: forget the stash (plain unlink)
+        if (!undoOpen) return;
+        undoOpen = false;
+        undoTimer.stop();
+        run(["forget"], () => {});
+    }
+    Timer { id: undoTimer; interval: 6000; onTriggered: cb.endUndo() }
+    function togglePin(i) {
+        const it = shown[i];
+        if (!it) return;
+        const s = serial;
+        run(it.pinned ? ["unpin", it.ref.slice(4)] : ["pin", it.ref], r => {
+            if (s !== serial) return;
+            if (r.error) {
+                if (r.error.indexOf("pins at most") >= 0) cb.say("20 pins at most — unpin one first");
+                else { cb.say("Couldn't pin — see the log"); cb.logError(r.error); }
+                return;
+            }
+            cb.relist(false);
+        });
+    }
+    function clearAll() {                       // two clicks: arm (3 s), then wipe; pins survive
+        if (!clearArmed) { clearArmed = true; disarm.restart(); return; }
+        clearArmed = false;
+        disarm.stop();
+        const s = serial;
+        run(["wipe"], r => {
+            if (s !== serial) return;
+            if (r.error) { cb.say("Couldn't clear — see the log"); cb.logError(r.error); return; }
+            cb.wipes++;
+            cb.undoOpen = false;                // wipe cleared the stash, thumbs and preview
+            undoTimer.stop();
+            cb.thumbs = ({});
+            cb.thumbsVersion++;
+            cb.preview = null;
+            cb.relist(false);
+        });
+    }
+    Timer { id: disarm; interval: 3000; onTriggered: cb.clearArmed = false }
+    function dropItem(key) {                    // remove one row in place, so it can collapse
+        items = items.filter(x => x.key !== key);
+        const j = shown.findIndex(x => x.key === key);
+        if (j < 0) return;
+        shown = shown.filter(x => x.key !== key);
+        recount();
+        rows.remove(j);
+        selected = shown.length ? Math.min(j, shown.length - 1) : -1;
     }
     Timer { id: cascadeOff; interval: 500; onTriggered: cb.cascade = false }
 
@@ -149,15 +262,22 @@ Scope {
     function refilter() {
         const q = query.trim().toLowerCase();
         const hit = q ? items.filter(i => i.search.indexOf(q) >= 0) : items;
-        const c = { all: hit.length, text: 0, image: 0 };
-        for (const i of hit) c[i.kind]++;
-        counts = c;
+        counts = countOf(hit);
         shown = filter === "all" ? hit : hit.filter(i => i.kind === filter);
         rows.clear();
         for (const i of shown)
             rows.append({ key: i.key, ref: i.ref, kind: i.kind, section: i.section, pinned: i.pinned,
                           label: i.kind === "image" ? i.meta : i.preview, hint: i.hint, swatch: i.color });
         selected = shown.length ? 0 : -1;
+    }
+    function countOf(hit) {
+        const c = { all: hit.length, text: 0, image: 0 };
+        for (const i of hit) c[i.kind]++;
+        return c;
+    }
+    function recount() {
+        const q = query.trim().toLowerCase();
+        counts = countOf(q ? items.filter(i => i.search.indexOf(q) >= 0) : items);
     }
     onQueryChanged: refilter()
     onFilterChanged: refilter()
@@ -227,6 +347,12 @@ Scope {
         function pick(kind: string): void { if (["all", "text", "image"].includes(kind)) cb.filter = kind; }
         function select(i: int): void { if (i >= 0 && i < cb.shown.length) cb.selected = i; }
         function scroll(i: int): void { cb.scrollTo(i); }
+        // the actions, through the same functions the mouse and keys use
+        function activate(i: int): void { cb.activate(i); }
+        function remove(i: int): void { cb.remove(i); }
+        function pin(i: int): void { cb.togglePin(i); }
+        function undo(): void { cb.undo(); }
+        function clear(): void { cb.clearAll(); }
         function state(): string {
             return JSON.stringify({
                 open: cb.open, loading: cb.loading, error: cb.error !== "", filter: cb.filter,
@@ -236,7 +362,11 @@ Scope {
                 listRuns: cb.listRuns, thumbStarted: cb.thumbStarted, thumbInFlight: cb.thumbInFlight,
                 thumbMaxInFlight: cb.thumbMaxInFlight, thumbQueued: cb.thumbQueue.length,
                 thumbDropped: cb.thumbDropped, thumbsDone: Object.keys(cb.thumbs).length,
-                previewDropped: cb.previewDropped
+                previewDropped: cb.previewDropped,
+                where: cb.where, copies: cb.copies, deletes: cb.deletes, undos: cb.undos, wipes: cb.wipes,
+                undoOpen: cb.undoOpen, clearArmed: cb.clearArmed, notice: cb.notice,
+                pinned: cb.items.filter(i => i.pinned).length, history: cb.historyCount,
+                topKey: cb.items.length ? cb.items.filter(i => !i.pinned).map(i => i.key)[0] || null : null
             });
         }
     }
@@ -361,6 +491,17 @@ Scope {
                                 Keys.onUpPressed: cb.move(-1)
                                 Keys.onDownPressed: cb.move(1)
                                 Keys.onEscapePressed: cb.hide()
+                                // Enter copies; Delete deletes when there is nothing ahead of the caret to
+                                // delete (so it still edits a search mid-text); Ctrl+P pins / unpins.
+                                Keys.onPressed: (e) => {
+                                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                                        cb.activate(cb.selected); e.accepted = true;
+                                    } else if (e.key === Qt.Key_Delete && search.cursorPosition === search.text.length) {
+                                        cb.remove(cb.selected); e.accepted = true;
+                                    } else if (e.key === Qt.Key_P && (e.modifiers & Qt.ControlModifier)) {
+                                        cb.togglePin(cb.selected); e.accepted = true;
+                                    }
+                                }
                                 Text {                          // placeholder: examples, never a label
                                     visible: !search.text
                                     x: 8                        // clear of the caret, as in the mock
@@ -384,17 +525,35 @@ Scope {
                             onPicked: (key) => { cb.filter = key; search.forceActiveFocus(); }
                         }
 
-                        Item {                                  // Clear all: an action, K3 (drawn, inert)
+                        Rectangle {                             // Clear all: ghost; armed = danger-soft + rim
                             id: clearAll
-                            width: clearRow.implicitWidth + 20
-                            height: Theme.clipChipH
-                            opacity: Theme.opacityDisabled
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: clearRow.implicitWidth + 24
+                            height: 40
+                            radius: Theme.radiusSm
+                            color: cb.clearArmed ? Theme.dangerSoft : clearArea.containsMouse ? Theme.pill : "transparent"
+                            border.width: cb.clearArmed ? 1 : 0
+                            border.color: Theme.dangerRim
+                            opacity: cb.historyCount > 0 ? 1 : Theme.opacityDisabled
+                            Behavior on color { ColorAnimation { duration: Theme.durHover } }
                             Row {
                                 id: clearRow
                                 anchors.centerIn: parent
                                 spacing: 6
                                 Text { text: Theme.gDelete; font.family: Theme.font; font.pixelSize: 13; color: Theme.danger }
-                                Text { text: "Clear all"; font.family: Theme.font; font.pixelSize: 13; color: Theme.inkMuted }
+                                Text {
+                                    text: cb.clearArmed ? "Clear " + cb.historyCount + (cb.historyCount === 1 ? " clip?" : " clips?") : "Clear all"
+                                    font.family: Theme.font; font.pixelSize: 13
+                                    color: cb.clearArmed ? Theme.ink : Theme.inkMuted
+                                }
+                            }
+                            MouseArea {
+                                id: clearArea
+                                anchors.fill: parent
+                                enabled: cb.historyCount > 0
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { cb.clearAll(); search.forceActiveFocus(); }
                             }
                         }
                     }
@@ -458,6 +617,15 @@ Scope {
                             model: rows
                             currentIndex: cb.selected
                             cacheBuffer: 132                    // two image rows: thumbs only near the view
+                            // delete: the row fades out over 180 ms and the list closes the gap
+                            remove: Transition {
+                                NumberAnimation { property: "opacity"; to: 0; duration: 180
+                                                  easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
+                            }
+                            displaced: Transition {
+                                NumberAnimation { property: "y"; duration: 180
+                                                  easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo }
+                            }
                             boundsBehavior: Flickable.StopAtBounds
                             highlightFollowsCurrentItem: false
                             highlight: Rectangle {              // ONE pill that glides (420 ms spring)
@@ -523,7 +691,7 @@ Scope {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     onEntered: cb.selected = row.index
-                                    onClicked: cb.selected = row.index      // K2: selects only; copying is K3
+                                    onClicked: cb.activate(row.index)
                                 }
 
                                 Item {                          // glyph column (text rows), 18 px
@@ -579,7 +747,7 @@ Scope {
                                 Text {
                                     x: row.isImage ? 12 + 84 + 12 : 12 + 18 + 10
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - x - (row.pinned ? 34 : 10)
+                                    width: parent.width - x - (row.sel ? (row.pinned ? 46 : 82) : row.pinned ? 34 : 10)
                                     text: row.label
                                     textFormat: Text.PlainText
                                     elide: Text.ElideRight
@@ -591,8 +759,41 @@ Scope {
                                     color: row.isImage && !row.sel ? Theme.inkMuted : Theme.ink
                                 }
 
+                                Row {                           // hover / selection: pin + delete, 30 px glass
+                                    visible: row.sel
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 6
+                                    Repeater {
+                                        // a pin is removed by unpinning, so pinned rows have no delete button
+                                        model: row.pinned ? ["pin"] : ["pin", "delete"]
+                                        Rectangle {
+                                            required property string modelData
+                                            width: 30
+                                            height: 30
+                                            radius: 9
+                                            color: btn.containsMouse ? Theme.pillHover : Theme.pill
+                                            scale: btn.pressed ? 0.972 : 1
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData === "pin" ? Theme.gPin : Theme.gDelete
+                                                font.family: Theme.font; font.pixelSize: 13
+                                                color: modelData === "delete" ? Theme.danger : row.pinned ? Theme.accent : Theme.ink
+                                            }
+                                            MouseArea {
+                                                id: btn
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: modelData === "pin" ? cb.togglePin(row.index) : cb.remove(row.index)
+                                            }
+                                        }
+                                    }
+                                }
+
                                 Text {                          // pinned rows always show the pin in accent
-                                    visible: row.pinned
+                                    visible: row.pinned && !row.sel
                                     anchors.right: parent.right
                                     anchors.rightMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
@@ -733,10 +934,43 @@ Scope {
                         id: footer
                         anchors.bottom: parent.bottom
                         width: parent.width
-                        height: 18
+                        height: 30
                         Caption {
+                            visible: !cb.undoOpen
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Read-only for now · ↑/↓ move · Esc closes"   // K3: the spec's footer
+                            text: cb.notice !== "" ? cb.notice : "Click copies · hover for pin and delete · Del deletes · Esc closes"
+                        }
+                        Row {                                   // after a delete, for 6 s
+                            visible: cb.undoOpen
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 12
+                            Caption {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Math.min(implicitWidth, 560)
+                                elide: Text.ElideRight
+                                text: "Deleted “" + cb.undoLabel + "”"
+                            }
+                            Rectangle {                         // glass Undo
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: undoRow.implicitWidth + 22
+                                height: 30
+                                radius: 9
+                                color: undoArea.containsMouse ? Theme.pillHover : Theme.pill
+                                Row {
+                                    id: undoRow
+                                    anchors.centerIn: parent
+                                    spacing: 6
+                                    Text { text: Theme.gUndo; font.family: Theme.font; font.pixelSize: 12; color: Theme.ink }
+                                    Text { text: "Undo"; font.family: Theme.font; font.pixelSize: 12; color: Theme.ink }
+                                }
+                                MouseArea {
+                                    id: undoArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { cb.undo(); search.forceActiveFocus(); }
+                                }
+                            }
                         }
                         Caption {
                             anchors.right: parent.right

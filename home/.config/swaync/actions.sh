@@ -184,6 +184,17 @@ print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
 qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }
 island_up() { qs_call rec ping >/dev/null 2>&1; }
 
+# The clipboard panel (docs/clipboard-ui.md), for `clip` and `clip-del`. rofi is the fallback ONLY
+# when the panel does not answer ping; if it answers but `open` fails, report it and stop — never
+# two UIs (the capture overlay's rule). Returns 0 when this call handled it, 1 to fall back.
+clip_panel() {
+  qs_call clip ping >/dev/null 2>&1 || return 1
+  qs_call clip open >/dev/null && return 0
+  echo "clip open failed although Quickshell answers ping: no fallback"
+  notify "Clipboard" "The panel did not open - see $LOG"
+  return 0
+}
+
 # The old "REC" notification (if any): island running -> close it; otherwise -> replace it with $1/$2.
 rec_note_done() {
   local id
@@ -463,9 +474,9 @@ $cal_out"
       [[ -n $new_id ]] && printf '%s' "$new_id" >"$CAL_ID"
       ;;
 
-  # --- clipboard history (cliphist + rofi) ---
-  # cliphist is only a store + pipe, with no picker of its own. The picker here is rofi,
-  # because you already use rofi for the launcher and the window switcher.
+  # --- clipboard history: the Quickshell panel, else cliphist + rofi ---
+  # cliphist is only a store + pipe, with no picker of its own. The panel (clip_panel) is the
+  # picker when Quickshell answers; rofi is the fallback below, unchanged.
   #
   # `-display-columns 2`: cliphist list prints "<id>\t<100-character preview>".
   # rofi treats TAB as the column separator, so only column 2 is shown — but the chosen
@@ -476,6 +487,7 @@ $cal_out"
   # on Esc rofi prints an empty string, decode returns nothing, and wl-copy WIPES the
   # current clipboard. Catch that and exit early.
   clip)
+      clip_panel && exit 0
       sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "clipboard" \
               -theme "$ROFI_THEME") || exit 0
       [[ -n $sel ]] || { echo "rofi: cancelled by the user"; exit 0; }
@@ -484,6 +496,7 @@ $cal_out"
 
   # --- delete one entry from the history ---
   clip-del)
+      clip_panel && exit 0                 # the panel deletes on hover / Del
       sel=$(cliphist list | rofi -dmenu -i -display-columns 2 -p "delete" \
               -mesg "Pick an entry to delete from the history" -theme "$ROFI_THEME") || exit 0
       [[ -n $sel ]] || exit 0

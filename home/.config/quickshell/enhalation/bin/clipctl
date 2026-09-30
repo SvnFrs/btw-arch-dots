@@ -9,10 +9,13 @@ never quote clip contents.
   preview <ref>              decode one image full-size into clip/preview.<fmt> (one file, replaced)
   text <ref> [max]           the text, cut at max (20000) chars, with lines and chars of the whole
   copy <id>                  cliphist decode <id> | wl-copy (refuses an empty or non-numeric id)
-  delete <id>                stash the bytes for undo, then delete exactly that entry
+  delete <id>                stash the bytes for undo, then delete exactly that entry, its thumb,
+                             and the preview file if it is that entry's
   undo                       store the stash again (it returns on top, under a new id)
+  forget                     remove the undo stash (the undo window ended, or the panel closed)
   wipe                       cliphist wipe, then clear the whole clip/ dir; pins survive
   pins | pin <id> | unpin <n> | copy-pin <n>
+  whereami                   {db, data_home, runtime}: the paths this clipctl would touch
 
 <ref> is a cliphist id, or pin:<n> for a pin. The cache is $XDG_RUNTIME_DIR/enhalation/clip
 (tmpfs, mode 0700). Pins live in $XDG_DATA_HOME/enhalation/clip-pins, plaintext on disk like
@@ -42,6 +45,7 @@ URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
 HEX = re.compile(r"#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})")
 DIGITS = re.compile(r"[0-9]+")
 NO_DB = "please store something first"   # cliphist 0.7.0 on a db that was never created
+PREVIEW_OWNER = "preview.ref"             # the ref whose bytes clip/preview.<fmt> holds
 
 
 class Fail(Exception):
@@ -268,8 +272,10 @@ def cmd_preview(ref):
     private_dir(CACHE)
     path = os.path.join(CACHE, f"preview.{it['fmt']}")
     write_atomic(path, load())
+    write_atomic(os.path.join(CACHE, PREVIEW_OWNER), ref.encode())   # so delete can clear it
     for name in os.listdir(CACHE):                     # ONE preview file at a time
-        if name.startswith("preview.") and name != os.path.basename(path) and not name.endswith(".part"):
+        if (name.startswith("preview.") and name not in (os.path.basename(path), PREVIEW_OWNER)
+                and not name.endswith(".part")):
             remove(os.path.join(CACHE, name))
     return {"ref": ref, "path": path, "fmt": it["fmt"], "w": it["w"], "h": it["h"], "size": it["size"]}
 
@@ -305,7 +311,17 @@ def cmd_delete(arg):
     cliphist("delete", data=f"{cid}\t{it['preview']}\n".encode())
     if any(c == cid for c, _ in entries()):
         raise Fail(f"cliphist did not delete clip {cid}")
-    remove(os.path.join(CACHE, f"thumb-{cid}.png"))
+    remove(os.path.join(CACHE, f"thumb-{cid}.png"))   # deleted means gone: its thumb…
+    if os.path.isdir(CACHE):                          # …and the preview, if it is this clip's
+        try:
+            with open(os.path.join(CACHE, PREVIEW_OWNER)) as f:
+                owner = f.read().strip()
+        except FileNotFoundError:
+            owner = None
+        if owner == str(cid):
+            for name in os.listdir(CACHE):
+                if name.startswith("preview."):
+                    remove(os.path.join(CACHE, name))
     return {"ok": True, "id": cid}
 
 
@@ -321,6 +337,29 @@ def cmd_undo():
     remove(os.path.join(CACHE, "undo.json"))
     top = next(entries(), None)
     return {"ok": True, "id": top[0] if top else None}
+
+
+def cmd_forget():
+    had = os.path.exists(os.path.join(CACHE, "undo.bin"))
+    remove(os.path.join(CACHE, "undo.bin"))
+    remove(os.path.join(CACHE, "undo.json"))
+    return {"ok": True, "had": had}
+
+
+def cmd_whereami():
+    """Paths only. The db is what cliphist itself resolves (flag > env > config > default)."""
+    db = None
+    try:                                               # cliphist prints `version` to stderr
+        p = subprocess.run(["cliphist", "version"], capture_output=True, timeout=TIMEOUT)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        raise Fail("cliphist did not answer `version`")
+    for line in (p.stdout + p.stderr).decode("utf-8", "replace").split("\n"):
+        key, _, value = line.partition("\t")
+        if key == "db-path":
+            db = value.strip()
+    if not db:
+        raise Fail("cliphist did not report its db path")
+    return {"db": db, "data_home": DATA, "runtime": RUNTIME}
 
 
 def cmd_wipe():
@@ -386,7 +425,8 @@ def cmd_copy_pin(arg):
 VERBS = {
     "list": (cmd_list, 0, 0), "thumb": (cmd_thumb, 1, 1), "preview": (cmd_preview, 1, 1),
     "text": (cmd_text, 1, 2), "copy": (cmd_copy, 1, 1), "delete": (cmd_delete, 1, 1),
-    "undo": (cmd_undo, 0, 0), "wipe": (cmd_wipe, 0, 0), "pins": (cmd_pins, 0, 0),
+    "undo": (cmd_undo, 0, 0), "forget": (cmd_forget, 0, 0), "wipe": (cmd_wipe, 0, 0),
+    "whereami": (cmd_whereami, 0, 0), "pins": (cmd_pins, 0, 0),
     "pin": (cmd_pin, 1, 1), "unpin": (cmd_unpin, 1, 1), "copy-pin": (cmd_copy_pin, 1, 1),
 }
 

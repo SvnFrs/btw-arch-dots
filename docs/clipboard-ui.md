@@ -329,6 +329,52 @@ rollback line.
     - The focused output comes from one python-wayfire call per open.
 - **K3:** actions (copy, delete+undo, pin, armed Clear all, keys). `actions.sh clip`/`clip-del`
   routing with the rofi fallback; test that fallback with the panel stopped.
+  **K3 record (2026-09-30).** Tyler's K3 safety rules, as built and tested:
+  - **Actions:**
+    - A click or Enter copies (`copy` / `copy-pin`), then the panel closes.
+    - Delete (the row button, or the Delete key when nothing is ahead of the caret) removes the row
+      (180 ms fade, the list closes the gap). The footer shows `Deleted “…”` + a glass Undo for 6 s.
+    - Pin and unpin (the row button, Ctrl+P).
+    - Clear all arms for 3 s as "Clear N clips?" on `danger-soft` + `danger-rim`; a second click
+      wipes. Pins survive.
+    - Hover or keyboard selection shows the two 30 px glass buttons. Pinned rows get only the pin
+      button: a pin is removed by unpinning it.
+    - Errors show a 6 s footer notice and write a line to the actions log. Neither ever quotes clip text.
+    - The footer is now the spec's.
+  - **Rule 1, no copy leaks.** The on-screen run put a `wl-copy` stub first on the panel's `PATH`. It
+    was called 3 times with exactly the expected sizes (text 32 B, image 464,942 B, pin 48 B, no MIME
+    args), and the panel closed after each. Open + close and focus loss added no calls. The real
+    copy path is K1's headless-Wayfire tests (copy unchanged).
+  - **Rule 2, the destructive guard.** `clipctl whereami` → `{db, data_home, runtime}`. The db is
+    what `cliphist version` reports (it prints to stderr). The panel loads it at start into
+    `state().where`. Before every delete, undo, pin, unpin and wipe, the test checked all three
+    against the synthetic paths. The first run aborted at the guard: the harness could not reach
+    the panel, because `qs` matches instances by display and the synthetic one ran with an
+    absolute `WAYLAND_DISPLAY`. That was fixed in the harness. No destructive step ever ran against
+    anything else.
+  - **Rule 3, deleted means gone** (synthetic, VERIFIED):
+    - `delete` removed the thumb and the preview it owned (`preview.ref` names the owner); another
+      clip's preview stays.
+    - The stash (`undo.bin`/`undo.json`) goes when the 6 s window ends (`clipctl forget`), when the
+      panel closes inside the window, and on wipe (the whole `clip/` dir).
+    - These are plain unlinks. The K1 suite now has **27 tests**, all passing.
+  - **Rule 4, routing.** `actions.sh clip` and `clip-del` → `clip_panel`: `qs_call clip ping`, then
+    `qs_call clip open`. VERIFIED three ways:
+    - the panel answers → it opens, and rofi is not called;
+    - ping answers but `open` fails (stubbed) → notify, no rofi;
+    - the panel stopped → rofi runs for both verbs (a fake rofi on the synthetic db).
+  - **Rule 5.** Undo re-lists: the clip returned on top as id 751 (it was 748). Clear all disarmed
+    after 3 s; two clicks wiped 748 clips, and both pins survived.
+  - **Isolation.** The synthetic panel also had a **private runtime dir**. Tyler's real
+    `$XDG_RUNTIME_DIR/enhalation/clip` exists now (from the K2 mouse test): synthetic thumbs would
+    collide with real ids, and the wipe test would have removed it. Afterwards the real db, the
+    real cache listing (names + mtimes) and the real clipboard hashes were unchanged, and only the
+    normal Quickshell was left running.
+  - Choices, for review:
+    - Pinned rows have no delete button, and Delete on one unpins.
+    - Delete acts only when nothing is ahead of the caret, so it still edits a search mid-text.
+    - After an undo, the selection returns to the top.
+    - Clear all dims when the history is empty.
 - **K4:** motion tuning, the swaync button (with capture-ui C4), and `CLAUDE.md`: the pins
   location, the thumb cache, and the `actions.sh` routing.
 
