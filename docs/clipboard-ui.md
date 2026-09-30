@@ -94,6 +94,9 @@ Pins are plaintext on disk, the same as cliphist's own db. That goes in `CLAUDE.
 - `actions.sh clip` and `clip-del` → `qs -c enhalation ipc call clip open`. If that fails, both run
   today's rofi paths unchanged.
 - Super+V and Super+Shift+V keep their bindings, so the wayfire.ini diff is none.
+- *(Tyler, 2026-09-30)* **A second press hides the panel.** `clip_panel` calls the IPC function
+  `toggle` (the rule 4 routing is otherwise unchanged); `open` stays idempotent for the swaync
+  button.
 - Mouse: a "Clipboard" button (U+F0EA) joins the capture buttons in the swaync control centre
   (capture-ui C4).
 

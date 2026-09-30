@@ -184,13 +184,14 @@ print("" if v is None else v)' "$REC_STATE" "$1" 2>/dev/null
 qs_call() { timeout 2 qs -c enhalation ipc call -- "$@"; }
 island_up() { qs_call rec ping >/dev/null 2>&1; }
 
-# The clipboard panel (docs/clipboard-ui.md), for `clip` and `clip-del`. rofi is the fallback ONLY
-# when the panel does not answer ping; if it answers but `open` fails, report it and stop — never
-# two UIs (the capture overlay's rule). Returns 0 when this call handled it, 1 to fall back.
+# The clipboard panel (docs/clipboard-ui.md), for `clip` and `clip-del`: `toggle`, so pressing
+# Super+V again hides it. rofi is the fallback ONLY when the panel does not answer ping; if it
+# answers but `toggle` fails, report it and stop — never two UIs (the capture overlay's rule).
+# Returns 0 when this call handled it, 1 to fall back.
 clip_panel() {
   qs_call clip ping >/dev/null 2>&1 || return 1
-  qs_call clip open >/dev/null && return 0
-  echo "clip open failed although Quickshell answers ping: no fallback"
+  qs_call clip toggle >/dev/null && return 0
+  echo "clip toggle failed although Quickshell answers ping: no fallback"
   notify "Clipboard" "The panel did not open - see $LOG"
   return 0
 }

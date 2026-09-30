@@ -342,6 +342,8 @@ Scope {
         function ping(): string { return "pong"; }
         function open(): void { cb.show(); }
         function close(): void { cb.hide(); }
+        // Super+V / Super+Shift+V: a second press hides it (Tyler, 2026-09-30). `open` stays idempotent.
+        function toggle(): void { if (cb.open || cb.opening) cb.hide(); else cb.show(); }
         // Test hooks (no mouse here). state() reports keys, kinds and counts, never clip text.
         function search(q: string): void { cb.query = q; }
         function pick(kind: string): void { if (["all", "text", "image"].includes(kind)) cb.filter = kind; }
