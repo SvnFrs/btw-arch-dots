@@ -49,13 +49,35 @@ Each verb prints one JSON object. Every error is `{"error": "…"}` plus a non-z
 
 | Verb | Does |
 |---|---|
-| `list` | `cliphist list` → `[{id, kind: text\|image, preview, lines?, chars?, fmt?, w?, h?, size?, thumb?}]`, newest first. Images are decoded once to `$XDG_RUNTIME_DIR/enhalation/clip/<id>.<fmt>` (dir mode 0700); `thumb` is that path. Cache files whose id is gone are pruned. |
-| `text <id> [max=20000]` | full text for the preview, truncated at `max` chars, with `truncated: true` if it was |
+| `list` | *(K0 corrections)* `cliphist -preview-width 400 list` → `{items: [{id, kind: text\|image, preview, hint?, color?, fmt?, w?, h?, size?}]}`, newest first. Image metadata is parsed from the preview line only; **`list` decodes nothing** and creates no files. Thumbs whose id is gone are pruned. |
+| `thumb <id>` | *(K0 corrections)* decode, downscale with ffmpeg to fit 168×96 (2× the 84×48 row thumb, never upscaled), cache as `clip/thumb-<id>.png` in `$XDG_RUNTIME_DIR/enhalation/` (dir mode 0700) |
+| `preview <id>` | *(K0 corrections)* decode an image full-size into **one** file, `clip/preview.<fmt>`, replaced each time |
+| `text <id> [max=20000]` | full text for the preview, truncated at `max` chars, with `truncated: true` if it was, plus `lines` and `chars` of the whole clip |
 | `copy <id>` | `cliphist decode <id> \| wl-copy` (image MIME as today's `clip` does it; VERIFIED at K0: no `-t` needed). **Refuses an empty id.** |
 | `delete <id>` | stash the decoded bytes in `…/clip/undo.bin` + `undo.json`, then delete exactly that entry (the `id\tpreview` line from `list`, piped to `cliphist delete`) |
 | `undo` | `cliphist store < undo.bin`, then remove the stash. The entry comes back at the top — VERIFIED at K0, **with a new id**, so the panel re-lists after `undo` and never reuses the old id |
-| `wipe` | `cliphist wipe`, then clear the thumb cache. Pins survive |
+| `wipe` | `cliphist wipe`, then clear the whole `clip/` dir (thumbs, preview, undo stash). Pins survive |
 | `pins`, `pin <id>`, `unpin <n>`, `copy-pin <n>` | pins (below) |
+
+**(K0 corrections, 2026-09-30)** — from the K0 numbers, by Tyler:
+
+1. **Thumbnails, not full-size decodes.** The real db is 243 MB, and `$XDG_RUNTIME_DIR` is RAM-backed
+   tmpfs, so decoding every image full-size there is out.
+   - `clipctl thumb <id>` decodes one image and downscales it with ffmpeg to fit 168×96 (2× the
+     84×48 row thumb), cached as `clip/thumb-<id>.png`.
+   - The panel requests thumbs lazily, only for delegates that are created or visible, and
+     asynchronously.
+   - `list` returns image metadata parsed from the preview line only; it decodes nothing.
+   - The preview pane decodes full-size on hover into ONE file (`clip/preview.<fmt>`, replaced each
+     time), debounced about 120 ms.
+   - Thumbs whose id is gone are pruned, and `wipe` clears the whole dir.
+2. **`list` cannot know lines or chars**: previews flatten newlines and cut at the preview width.
+   - Row glyphs come from the preview only: URL, hex colour swatch, else plain text.
+   - "N lines · M chars" and the multi-line glyph appear in the preview meta only, from
+     `clipctl text <id>` on hover.
+   - `lines`/`chars` are dropped from `list`'s JSON.
+3. **Search depth**: `list` runs `cliphist -preview-width 400 list`, so search matches 400 chars.
+   Rows still ellipsize. **Anything past 400 chars is not searchable.**
 
 ### Pins
 
@@ -118,13 +140,15 @@ lengths only.
   "calt": 0}` (VERIFIED at K0 on Qt 6.11.2; the `renderType`/`preferShaping: false` fallback is not needed).
   The same goes for the preview.
 
-Kind glyphs are a heuristic; when in doubt use plain text:
+Kind glyphs are a heuristic; when in doubt use plain text. *(K0 corrections)* Rows decide from the
+400-char preview only (`hint` in `list`); the multi-line glyph is for the preview meta, from
+`clipctl text`:
 
 | Clip | Glyph |
 |---|---|
 | URL | U+F0C1 |
 | `#rgb` / `#rrggbb` / `#rrggbbaa` | a 14 px swatch of that colour instead of a glyph |
-| multi-line | U+F121 |
+| multi-line (preview meta only) | U+F121 |
 | other | U+F036 |
 
 The mock's terminal glyph is optional.
@@ -146,8 +170,9 @@ The mock's terminal glyph is optional.
 ### Preview
 
 - The right column fills the rest.
-- Meta line: glyph + "Text"/"Image" (Demi Bold 13, `ink`) + `4 lines · 162 chars` or
-  `png · 3440×1440 · 184 KiB` (caption, `ink-muted`).
+- Meta line: glyph + "Text"/"Image" (Demi Bold 13, `ink`) + `4 lines · 162 chars` (from
+  `clipctl text` on hover) or `png · 3440×1440 · 184 KiB` (from `list`) (caption, `ink-muted`).
+- Image: *(K0 corrections)* `clipctl preview <id>` on hover, debounced ~120 ms.
 - Box: `well` + `well-shadow`, radius 14, padding 16.
 - Text: 13.5 px mono `ink`, wrapped, scrollable, ligatures off, capped by `clipctl text`, with a
   "truncated" caption when it was.
@@ -227,6 +252,40 @@ rollback line.
 - **K1:** `clipctl` + unit-style tests against the throwaway db. Cover list, the thumb cache and
   its pruning, text truncation, copy refusing an empty id, delete+undo round-trip, pins, and wipe
   keeping pins.
+  **K1 record (2026-09-30).** `home/.config/quickshell/enhalation/bin/clipctl` (python3 stdlib, plus the
+  `cliphist`, `wl-copy` and `ffmpeg` binaries) and `scripts/test-clipctl.py`: **23 tests, all pass**, none
+  skipped. The suite runs in one throwaway state: `CLIPHIST_DB_PATH`, a private `XDG_RUNTIME_DIR` (the
+  cache) and `XDG_DATA_HOME` (pins), plus a private headless Wayfire whose socket lives in that runtime
+  dir, so the copy tests never reach the real clipboard or its watcher. At the end it asserts that the
+  real db's size and mtime, and the absence of the real cache and pins dirs, are unchanged.
+  - Covered: list (kinds, hints, QML colours, newest first, no `lines`/`chars`), **`list` decodes
+    nothing** (no cache dir, and no new files once one exists), 400-char search depth, **a 3440×1440
+    PNG's thumb fits 168×96** (168×70) and is cached, small images are never upscaled, tall images, pruning of
+    gone ids, one `preview.<fmt>` file, text truncation and line/char counts, `copy` refusing `""`,
+    `" "`, `abc`, `12a`, `-1` and a missing id (the clipboard stays unchanged), copy of text and image
+    (`image/png`, identical bytes, and it returns promptly), delete and undo (exactly one entry; it
+    comes back on top under a new id), pins (order, 0600/0700 modes, no duplicates, at most 20, they
+    survive `wipe` and the loss of their entry, `pin:<n>` refs), a damaged pins index that cannot
+    escape the pins dir, `wipe` clearing the whole `clip/` dir, and JSON-only errors.
+  - Choices, for review:
+    - `list` prints `{"items": [...]}` (the "one JSON object" rule) rather than a bare array.
+    - Rows get a `hint` of `url`, `color` or `text`. `color` is converted to QML's `#aarrggbb`,
+      because CSS `#rrggbbaa` would read wrong in QML.
+    - `text`, `thumb` and `preview` also take `pin:<n>`, and a pin's preview is its own file.
+    - A db that was never created (cliphist: "please store something first") lists as empty.
+    - `wl-copy` runs with stdout and stderr on `/dev/null`: its forked child would otherwise hold
+      clipctl's pipes until the next copy.
+    - `delete` pipes `<id>\t<preview>` (cliphist 0.7.0 needs only the id; K1 probe).
+  - Found: a preview collapses each whitespace run to one space, and a 400-wide preview is
+    400 chars + `…`. Non-image binary is previewed as text (only a decodable image gets
+    `[[ binary data … ]]`).
+  - Measured on a synthetic 750-entry db (50 images at 3440×1440, 41 MB): `list` about 36 ms (255 KiB
+    of JSON), a cold `thumb` 172 ms, a cached one 34 ms, `preview` 36 ms, `text` 35 ms.
+  - Peak memory (`/usr/bin/time`): `list` 19 MB, `preview` 18 MB. A cold `thumb` is ffmpeg decoding
+    the full frame: 116 MB by default, **77 MB with `-filter_threads 1`** (same pixels, same time),
+    which `thumb` now uses. `-threads 1` alone changes nothing. **For K2:** the panel runs at most
+    **two** thumb jobs at a time (about 155 MB of transient peak), queueing the rest, so a screen of
+    image rows never starts eight decodes at once.
 - **K2:** `ClipPanel.qml`, read-only: list, filter, search, preview, the gliding pill, empty and
   error states. Screenshots next to the preview.
 - **K3:** actions (copy, delete+undo, pin, armed Clear all, keys). `actions.sh clip`/`clip-del`

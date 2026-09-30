@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+"""clipctl: the clipboard panel's only way to cliphist and wl-copy (docs/clipboard-ui.md §1).
+
+Every verb prints one JSON object; every error is {"error": "..."} with exit status 1. Errors
+never quote clip contents.
+
+  list                       items, newest first; parses the preview lines, decodes nothing
+  thumb <ref>                decode one image, downscale to fit 168x96, cache clip/thumb-<id>.png
+  preview <ref>              decode one image full-size into clip/preview.<fmt> (one file, replaced)
+  text <ref> [max]           the text, cut at max (20000) chars, with lines and chars of the whole
+  copy <id>                  cliphist decode <id> | wl-copy (refuses an empty or non-numeric id)
+  delete <id>                stash the bytes for undo, then delete exactly that entry
+  undo                       store the stash again (it returns on top, under a new id)
+  wipe                       cliphist wipe, then clear the whole clip/ dir; pins survive
+  pins | pin <id> | unpin <n> | copy-pin <n>
+
+<ref> is a cliphist id, or pin:<n> for a pin. The cache is $XDG_RUNTIME_DIR/enhalation/clip
+(tmpfs, mode 0700). Pins live in $XDG_DATA_HOME/enhalation/clip-pins, plaintext on disk like
+cliphist's own db. CLIPHIST_DB_PATH is honoured (cliphist reads it), which is how tests stay off
+the real history.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+PREVIEW_WIDTH = 400          # K0 corrections: search reaches 400 chars
+TEXT_MAX = 20000
+THUMB_W, THUMB_H = 168, 96   # 2x the 84x48 row thumb
+PINS_MAX = 20
+TIMEOUT = 20
+
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/enhalation-{os.getuid()}"
+CACHE = os.path.join(RUNTIME, "enhalation", "clip")
+DATA = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+PINS = os.path.join(DATA, "enhalation", "clip-pins")
+
+IMAGE = re.compile(r"\[\[ binary data (\d+ \S+) ([a-z0-9]+) (\d+)x(\d+) \]\]")   # fmt names a file
+URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S+")
+HEX = re.compile(r"#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})")
+DIGITS = re.compile(r"[0-9]+")
+NO_DB = "please store something first"   # cliphist 0.7.0 on a db that was never created
+
+
+class Fail(Exception):
+    pass
+
+
+# ── processes and files ────────────────────────────────────────────────────────────────────────
+
+def run(argv, data=None, env=None):
+    try:
+        p = subprocess.run(argv, input=data, capture_output=True, timeout=TIMEOUT, env=env)
+    except FileNotFoundError:
+        raise Fail(f"{argv[0]} is not installed")
+    except subprocess.TimeoutExpired:
+        raise Fail(f"{argv[0]} timed out")
+    if p.returncode != 0:
+        why = p.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise Fail(f"{' '.join(argv[:2])} failed (exit {p.returncode}): {why[-1][:160] if why else ''}")
+    return p.stdout
+
+
+def cliphist(*args, data=None):
+    env = dict(os.environ)
+    env.pop("CLIPBOARD_STATE", None)   # set by wl-paste --watch; never let it steer a manual store
+    return run(["cliphist", *args], data=data, env=env)
+
+
+def wl_copy(data):
+    # wl-copy forks a child that serves the clipboard until someone else copies. That child
+    # inherits our pipes, so capturing its output would block until then: DEVNULL both.
+    try:
+        p = subprocess.run(["wl-copy"], input=data, stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=TIMEOUT)
+    except FileNotFoundError:
+        raise Fail("wl-copy is not installed")
+    except subprocess.TimeoutExpired:
+        raise Fail("wl-copy timed out")
+    if p.returncode != 0:
+        raise Fail(f"wl-copy failed (exit {p.returncode})")
+
+
+def private_dir(path):
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    os.chmod(path, 0o700)
+
+
+def write_atomic(path, data):
+    part = f"{path}.{os.getpid()}.part"
+    fd = os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
+    os.replace(part, path)
+
+
+def remove(path):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+
+
+def png_size(path):
+    with open(path, "rb") as f:
+        head = f.read(24)
+    if head[:8] != b"\x89PNG\r\n\x1a\n":
+        raise Fail("thumb is not a PNG")
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+
+
+# ── cliphist entries ───────────────────────────────────────────────────────────────────────────
+
+def entries():
+    """(id, preview) pairs, newest first, previews 400 chars wide (plus "…" when cut)."""
+    try:
+        out = cliphist("-preview-width", str(PREVIEW_WIDTH), "list")
+    except Fail as e:
+        if NO_DB in str(e):                            # nothing copied yet: an empty history
+            return
+        raise
+    for line in out.decode("utf-8", "replace").split("\n"):
+        cid, tab, preview = line.partition("\t")
+        if tab and DIGITS.fullmatch(cid):
+            yield int(cid), preview
+
+
+def item(cid, preview):
+    m = IMAGE.fullmatch(preview)
+    if m:
+        return {"id": cid, "kind": "image", "preview": preview,
+                "fmt": m[2], "w": int(m[3]), "h": int(m[4]), "size": m[1]}
+    it = {"id": cid, "kind": "text", "preview": preview, "hint": "text"}
+    p = preview.strip()
+    if URL.fullmatch(p):
+        it["hint"] = "url"
+    elif HEX.fullmatch(p):
+        it["hint"] = "color"
+        it["color"] = qml_color(p)
+    return it
+
+
+def qml_color(css):
+    """#rgb / #rrggbb / #rrggbbaa (CSS) -> #rrggbb / #aarrggbb (QML puts alpha first)."""
+    h = css[1:].lower()
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return "#" + (h[6:] + h[:6] if len(h) == 8 else h)
+
+
+def clip_id(arg):
+    if not isinstance(arg, str) or not DIGITS.fullmatch(arg):
+        raise Fail("need a clip id (digits only)")
+    return int(arg)
+
+
+def lookup(cid):
+    for c, preview in entries():
+        if c == cid:
+            return item(c, preview)
+    raise Fail(f"no clip {cid}")
+
+
+def decode(cid):
+    data = cliphist("decode", str(cid))
+    if not data:
+        raise Fail(f"clip {cid} decoded to nothing")
+    return data
+
+
+# ── pins ───────────────────────────────────────────────────────────────────────────────────────
+
+def load_pins():
+    try:
+        with open(os.path.join(PINS, "index.json")) as f:
+            ix = json.load(f)
+    except FileNotFoundError:
+        return {"next": 1, "items": []}
+    if not isinstance(ix, dict) or not isinstance(ix.get("items"), list):
+        raise Fail("pins index is damaged")
+    return ix
+
+
+def save_pins(ix):
+    private_dir(PINS)
+    write_atomic(os.path.join(PINS, "index.json"), json.dumps(ix, ensure_ascii=False).encode())
+
+
+def pin_number(arg):
+    if not isinstance(arg, str) or not DIGITS.fullmatch(arg):
+        raise Fail("need a pin number (digits only)")
+    return int(arg)
+
+
+def find_pin(n):
+    for p in load_pins()["items"]:
+        if p.get("n") == n:
+            return p
+    raise Fail(f"no pin {n}")
+
+
+def pin_path(p):
+    # index.json names the file; only ever a bare "<n>.<ext>" inside PINS
+    name = p.get("file") if isinstance(p, dict) else None
+    if not isinstance(name, str) or not re.fullmatch(r"[0-9]+\.[a-z0-9]+", name):
+        raise Fail("pins index is damaged")
+    return os.path.join(PINS, name)
+
+
+def read_pin(p):
+    with open(pin_path(p), "rb") as f:
+        return f.read()
+
+
+def resolve(ref):
+    """A <ref> -> (its list item or pin entry, a loader for its bytes, the thumb-cache stem)."""
+    if isinstance(ref, str) and ref.startswith("pin:"):
+        p = find_pin(pin_number(ref[4:]))
+        return p, (lambda: read_pin(p)), f"pin-{p['n']}"
+    cid = clip_id(ref)
+    it = lookup(cid)
+    return it, (lambda: decode(cid)), str(cid)
+
+
+# ── verbs ──────────────────────────────────────────────────────────────────────────────────────
+
+def cmd_list():
+    items = [item(c, p) for c, p in entries()]
+    # prune thumbs whose id is gone; never create the cache here (list writes nothing)
+    live = {i["id"] for i in items}
+    if os.path.isdir(CACHE):
+        for name in os.listdir(CACHE):
+            m = re.fullmatch(r"thumb-([0-9]+)\.png", name)
+            if m and int(m[1]) not in live:
+                remove(os.path.join(CACHE, name))
+    return {"items": items}
+
+
+def cmd_thumb(ref):
+    it, load, stem = resolve(ref)
+    if it["kind"] != "image":
+        raise Fail("not an image")
+    private_dir(CACHE)
+    path = os.path.join(CACHE, f"thumb-{stem}.png")
+    if not os.path.exists(path):
+        part = os.path.join(CACHE, f".thumb-{stem}.{os.getpid()}.png")
+        try:
+            # one filter thread: same pixels, peak RSS 116 -> 77 MB on a 3440x1440 decode
+            run(["ffmpeg", "-v", "error", "-y", "-filter_threads", "1", "-i", "pipe:0", "-vf",
+                 f"scale='min({THUMB_W},iw)':'min({THUMB_H},ih)':force_original_aspect_ratio=decrease",
+                 "-frames:v", "1", "-update", "1", part], data=load())
+            os.replace(part, path)
+        finally:
+            remove(part)
+    w, h = png_size(path)
+    return {"ref": ref, "thumb": path, "w": w, "h": h}
+
+
+def cmd_preview(ref):
+    it, load, _ = resolve(ref)
+    if it["kind"] != "image":
+        raise Fail("not an image")
+    if "file" in it:                                   # a pin is already a file on disk
+        return {"ref": ref, "path": pin_path(it), "fmt": it["fmt"],
+                "w": it["w"], "h": it["h"], "size": it["size"]}
+    private_dir(CACHE)
+    path = os.path.join(CACHE, f"preview.{it['fmt']}")
+    write_atomic(path, load())
+    for name in os.listdir(CACHE):                     # ONE preview file at a time
+        if name.startswith("preview.") and name != os.path.basename(path) and not name.endswith(".part"):
+            remove(os.path.join(CACHE, name))
+    return {"ref": ref, "path": path, "fmt": it["fmt"], "w": it["w"], "h": it["h"], "size": it["size"]}
+
+
+def cmd_text(ref, limit=None):
+    it, load, _ = resolve(ref)
+    if it["kind"] != "text":
+        raise Fail("not text")
+    n = TEXT_MAX
+    if limit is not None:
+        if not DIGITS.fullmatch(limit) or int(limit) < 1:
+            raise Fail("max must be a positive number")
+        n = int(limit)
+    s = load().decode("utf-8", "replace")
+    lines = s.count("\n") + (1 if s and not s.endswith("\n") else 0)
+    return {"ref": ref, "text": s[:n], "lines": lines, "chars": len(s), "truncated": len(s) > n}
+
+
+def cmd_copy(arg):
+    cid = clip_id(arg)                                 # refuses "" before anything runs
+    wl_copy(decode(cid))
+    return {"ok": True, "id": cid}
+
+
+def cmd_delete(arg):
+    cid = clip_id(arg)
+    it = lookup(cid)
+    data = decode(cid)
+    private_dir(CACHE)
+    write_atomic(os.path.join(CACHE, "undo.bin"), data)
+    write_atomic(os.path.join(CACHE, "undo.json"),
+                 json.dumps({"id": cid, "kind": it["kind"], "preview": it["preview"]}, ensure_ascii=False).encode())
+    cliphist("delete", data=f"{cid}\t{it['preview']}\n".encode())
+    if any(c == cid for c, _ in entries()):
+        raise Fail(f"cliphist did not delete clip {cid}")
+    remove(os.path.join(CACHE, f"thumb-{cid}.png"))
+    return {"ok": True, "id": cid}
+
+
+def cmd_undo():
+    stash = os.path.join(CACHE, "undo.bin")
+    try:
+        with open(stash, "rb") as f:
+            data = f.read()
+    except FileNotFoundError:
+        raise Fail("nothing to undo")
+    cliphist("store", data=data)
+    remove(stash)
+    remove(os.path.join(CACHE, "undo.json"))
+    top = next(entries(), None)
+    return {"ok": True, "id": top[0] if top else None}
+
+
+def cmd_wipe():
+    try:
+        cliphist("wipe")
+    except Fail as e:
+        if NO_DB not in str(e):
+            raise
+    shutil.rmtree(CACHE, ignore_errors=True)
+    return {"ok": True, "pins": len(load_pins()["items"])}
+
+
+def cmd_pins():
+    return {"items": [dict(p, path=pin_path(p)) for p in load_pins()["items"]]}
+
+
+def cmd_pin(arg):
+    cid = clip_id(arg)
+    it = lookup(cid)
+    data = decode(cid)
+    ix = load_pins()
+    for p in ix["items"]:
+        if read_pin(p) == data:                        # already pinned: no duplicate
+            return {"ok": True, "n": p["n"], "existing": True}
+    if len(ix["items"]) >= PINS_MAX:
+        raise Fail(f"{PINS_MAX} pins at most; unpin one first")
+    n = ix["next"]
+    entry = {"n": n, "kind": it["kind"], "preview": it["preview"]}
+    if it["kind"] == "image":
+        entry.update(fmt=it["fmt"], w=it["w"], h=it["h"], size=it["size"], file=f"{n}.{it['fmt']}")
+    else:
+        entry.update(hint=it["hint"], file=f"{n}.txt")
+        if "color" in it:
+            entry["color"] = it["color"]
+    private_dir(PINS)
+    write_atomic(os.path.join(PINS, entry["file"]), data)
+    ix["items"].insert(0, entry)
+    ix["next"] = n + 1
+    save_pins(ix)
+    return {"ok": True, "n": n, "existing": False}
+
+
+def cmd_unpin(arg):
+    n = pin_number(arg)
+    ix = load_pins()
+    keep = [p for p in ix["items"] if p.get("n") != n]
+    if len(keep) == len(ix["items"]):
+        raise Fail(f"no pin {n}")
+    gone = next(p for p in ix["items"] if p.get("n") == n)
+    ix["items"] = keep
+    save_pins(ix)
+    remove(pin_path(gone))
+    remove(os.path.join(CACHE, f"thumb-pin-{n}.png"))
+    return {"ok": True, "n": n}
+
+
+def cmd_copy_pin(arg):
+    p = find_pin(pin_number(arg))
+    wl_copy(read_pin(p))
+    return {"ok": True, "n": p["n"]}
+
+
+VERBS = {
+    "list": (cmd_list, 0, 0), "thumb": (cmd_thumb, 1, 1), "preview": (cmd_preview, 1, 1),
+    "text": (cmd_text, 1, 2), "copy": (cmd_copy, 1, 1), "delete": (cmd_delete, 1, 1),
+    "undo": (cmd_undo, 0, 0), "wipe": (cmd_wipe, 0, 0), "pins": (cmd_pins, 0, 0),
+    "pin": (cmd_pin, 1, 1), "unpin": (cmd_unpin, 1, 1), "copy-pin": (cmd_copy_pin, 1, 1),
+}
+
+
+def main(argv):
+    try:
+        if not argv or argv[0] not in VERBS:
+            raise Fail("usage: clipctl " + "|".join(VERBS))
+        fn, lo, hi = VERBS[argv[0]]
+        args = argv[1:]
+        if not lo <= len(args) <= hi:
+            raise Fail(f"{argv[0]}: wrong number of arguments")
+        out = fn(*args)
+        code = 0
+    except Fail as e:
+        out, code = {"error": str(e)}, 1
+    except Exception as e:                             # never a traceback: the panel reads JSON
+        out, code = {"error": f"{type(e).__name__}: {e}"}, 1
+    sys.stdout.buffer.write(json.dumps(out, ensure_ascii=False).encode() + b"\n")   # UTF-8 whatever the locale
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
