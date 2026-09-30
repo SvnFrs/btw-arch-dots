@@ -310,8 +310,11 @@ PanelWindow {
             // bottom-centre, 24 px above the edge; enter = rise 12 px + fade, 280 ms ease-out-expo
             y: parent.height - height - 24 + (ov.active ? 0 : 12)
             opacity: ov.active ? 1 : 0
-            Behavior on y { NumberAnimation { duration: Theme.durEnter; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo } }
-            Behavior on opacity { NumberAnimation { duration: Theme.durEnter; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.easeOutExpo } }
+            // leave (§3): 150 ms ease-exit, with the rest of the overlay
+            Behavior on y { NumberAnimation { duration: ov.active ? Theme.durEnter : Theme.durExit; easing.type: Easing.BezierSpline
+                                              easing.bezierCurve: ov.active ? Theme.easeOutExpo : Theme.easeExit } }
+            Behavior on opacity { NumberAnimation { duration: ov.active ? Theme.durEnter : Theme.durExit; easing.type: Easing.BezierSpline
+                                                    easing.bezierCurve: ov.active ? Theme.easeOutExpo : Theme.easeExit } }
             mode: ov.capture.mode
             kind: ov.capture.kind
             pointer: ov.capture.pointer

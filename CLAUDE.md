@@ -86,7 +86,7 @@ are *also* installed and entirely unused; the running process maps only
 ### `wayfire.ini` is the hub
 
 It owns the whole session: `[autostart]` is the daemon set (fcitx5, awww,
-swaync, polkit, keyring, kanshi, the IPC scripts), and `[command]` is every
+swaync, polkit, keyring, kanshi, Quickshell, the IPC scripts), and `[command]` is every
 keybinding. It does **not** own the output layout — kanshi does.
 
 Two things that bite:
@@ -121,6 +121,22 @@ Both the `wayfire.ini` keybindings and the notification-centre buttons call
 through ALSA under PipeWire, per-channel rounding drift, `wf-recorder -a` with a
 space being silently ignored, `xdg-user-dir` returning `$HOME`). Read them before
 changing volume or capture behaviour — those are all easy to reintroduce.
+
+The capture UI ([`docs/capture-ui.md`](docs/capture-ui.md)) adds these verbs:
+
+- `capture-open <area|screen|window> <photo|video>` freezes the focused output (two PPM grabs,
+  plus the window list for Window mode) and opens the Quickshell overlay.
+- `shot-crop` crops the freeze.
+- `rec-start` / `rec-stop` / `rec-discard` drive wf-recorder under a supervising bash.
+  - `rec-exited`, which that supervisor runs, is the **only** writer of the final state in
+    `$XDG_RUNTIME_DIR/capture/rec.json` (atomic tmp + `mv`). The recording island only reads it.
+- `rec-active` answers swaync's Record toggle. Like the volume verbs, it runs before the logging
+  block.
+
+Every `qs` IPC call goes through `qs_call` (`timeout 2 qs -c enhalation ipc call -- …`). No IPC
+function may share a name with a `qs ipc` subcommand (`show`, `call`, `wait`, `listen`, `prop`).
+The log rotates **in place**: a `mv` would strand the recording supervisor on a deleted inode.
+`dots doctor` checks that Quickshell answers.
 
 `clip` / `clip-del` (Super+V, Super+Shift+V) open the Quickshell clipboard panel over IPC
 (`toggle`; the swaync Clipboard button uses `clip open`). They fall back to the rofi picker

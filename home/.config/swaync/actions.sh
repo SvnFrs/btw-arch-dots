@@ -65,9 +65,12 @@ esac
 LOG="${XDG_CACHE_HOME:-$HOME/.cache}/swaync-actions.log"
 mkdir -p "$(dirname "$LOG")"
 
-# Rotate the log: keep the last 200 lines so the file never grows without bound.
+# Rotate the log IN PLACE: keep the last 200 lines so the file never grows without bound, but
+# never replace the file. A `mv` gives the log a new inode, and a long-running child that
+# inherited the old one (the recording supervisor and wf-recorder) would go on writing to a
+# deleted file (capture-ui C2 review, done in C5).
 if [[ -f $LOG ]]; then
-  tail -n 200 "$LOG" >"$LOG.tmp" 2>/dev/null && mv -f "$LOG.tmp" "$LOG"
+  tail -n 200 "$LOG" >"$LOG.tmp" 2>/dev/null && cat "$LOG.tmp" >"$LOG" && rm -f "$LOG.tmp"
 fi
 
 # From here on EVERYTHING goes to the log.

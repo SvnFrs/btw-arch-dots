@@ -30,6 +30,11 @@ grim
 slurp
 wf-recorder
 wl-clipboard
+ffmpeg                    # actions.sh shot-crop (ffmpeg) and rec-exited (ffprobe); clipctl thumbs
+
+# capture UI + clipboard panel — docs/capture-ui.md, docs/clipboard-ui.md
+quickshell                # wayfire.ini [autostart] capture-ui = qs -c enhalation
+cliphist                  # the clipboard store: [autostart] wl-paste --watch, clipctl, the rofi fallback
 
 # hardware controls
 brightnessctl

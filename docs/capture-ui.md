@@ -436,6 +436,28 @@ recording notifications the island stands in for (they still show when the islan
   `mv`), so long-running children keep writing to the live log. Motion tuning against §3/§4, `dots.conf`, packages list, doctor check, `CLAUDE.md` (the
   actions.sh section: the new verbs and the state file), keybindings doc.
 
+**C5 record (2026-09-30).**
+- **Log rotated in place** (the C2 review): `tail -n 200 > tmp && cat tmp > "$LOG"`, no `mv`. VERIFIED
+  on a scratch `XDG_CACHE_HOME`, with a child that opened the log before a rotation and wrote after
+  it. With the old `mv`, its line was lost (0 in the live log). In place, the inode is kept and the
+  line is there; the log is still trimmed to its last 200 lines, and no `.tmp` is left.
+- **Motion vs §3/§4.** The island matches §4.2: open 420 ms spring / close 280 ms expo for width,
+  height and radius together; the 180 ms crossfade starting 120 ms into the open; appear 280 ms from
+  .92; leave 150 ms ease-exit. The overlay matched §3 except one thing: the toolbar's rise and fade
+  used the enter curve (280 ms expo) on leave too. It now leaves with the overlay, in 150 ms
+  `ease-exit`.
+- **Packages:** `desktop.txt` gains `quickshell` and `cliphist` (both referenced by tracked configs
+  and not listed) and `ffmpeg`, whose CLIs actions.sh (`shot-crop`, `ffprobe`) and `clipctl` now
+  call directly.
+- **Doctor:** Quickshell must be installed (a failure otherwise) and answering `rec ping` and
+  `clip ping`. A stopped instance is a warning, since PrtSc and Super+V fall back to slurp and
+  rofi. VERIFIED both ways, with Quickshell stopped for a few seconds and restarted.
+- **`CLAUDE.md`:** the actions.sh section now covers the capture verbs, `rec.json` and its one
+  writer, `qs_call` and its naming rule, and the in-place rotation. The autostart list names
+  Quickshell.
+- `dots.conf` already had both entries (`home/.config/quickshell/enhalation`, `ipc-scripts`), and
+  `docs/keybindings.md` is up to date.
+
 ## 9. INFERRED — check at C0 or the increment that uses it
 - `qs -c <name>` selects a config under `~/.config/quickshell/<name>/`, and `qs -c <name> ipc call …` targets it.
 - PanelWindow input mask (`mask: Region { item: … }`) limits clicks to the island.

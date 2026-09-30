@@ -329,6 +329,18 @@ PY
       fi
     fi
 
+    # The capture overlay, recording island and clipboard panel are one Quickshell config
+    # (wayfire.ini [autostart] capture-ui = qs -c enhalation). Without it PrtSc and Super+V fall
+    # back to slurp and rofi, so a stopped instance is a warning; a missing package is not.
+    if ! command -v qs >/dev/null 2>&1; then
+      bad "quickshell is not installed — pacman -S quickshell (capture UI, clipboard panel)"
+    elif [[ $(timeout 2 qs -c enhalation ipc call -- rec ping 2>/dev/null) == pong &&
+            $(timeout 2 qs -c enhalation ipc call -- clip ping 2>/dev/null) == pong ]]; then
+      chk "Quickshell (enhalation) running — capture overlay, recording island, clipboard panel"
+    else
+      soft "Quickshell (enhalation) is not answering — PrtSc and Super+V fall back to slurp and rofi; start it: setsid -f qs -c enhalation"
+    fi
+
     # Every keybinding that runs a plain command must resolve to a real binary.
     # Values wrapped in `sh -c` are skipped: their payload is a script path,
     # already covered above, and its arguments are not commands.
